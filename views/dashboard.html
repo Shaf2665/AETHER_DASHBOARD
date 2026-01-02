@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>Welcome back, <span id="username">User</span>!</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Content -->
+            <div class="dashboard-content" id="dashboardContent">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🖥️</div>
+                        <div class="stat-info">
+                            <h3 id="serverCount">0</h3>
+                            <p>Total Servers</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🪙</div>
+                        <div class="stat-info">
+                            <h3 id="totalCoins">0</h3>
+                            <p>Total Coins</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-info">
+                            <h3 id="resourceUsage">0%</h3>
+                            <p>Resource Usage</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <h2>Quick Actions</h2>
+                    <div class="action-buttons">
+                        <a href="/servers/create" class="btn btn-primary">Create New Server</a>
+                        <a href="/linkvertise" class="btn btn-success">Earn Coins</a>
+                        <a href="/servers" class="btn btn-secondary">Manage Servers</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        // Initialize dashboard page
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadDashboardStats();
+            checkAdminAccess();
+        });
+    </script>
+</body>
+</html>
+

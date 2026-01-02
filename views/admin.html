@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item active" data-page="admin">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>Admin Panel</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <!-- System Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🖥️</div>
+                        <div class="stat-info">
+                            <h3 id="totalServers">0</h3>
+                            <p>Total Servers</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🪙</div>
+                        <div class="stat-info">
+                            <h3 id="totalCoins">0</h3>
+                            <p>Total Coins</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabs -->
+                <div class="card">
+                    <div style="display: flex; gap: 16px; border-bottom: 2px solid rgba(124, 58, 237, 0.3); margin-bottom: 20px;">
+                        <button class="tab-btn active" onclick="showTab('users')">Users</button>
+                        <button class="tab-btn" onclick="showTab('servers')">Servers</button>
+                        <button class="tab-btn" onclick="showTab('coins')">Coin Management</button>
+                        <button class="tab-btn" onclick="showTab('linkvertise')">Linkvertise</button>
+                        <button class="tab-btn" onclick="showTab('store')">Store Management</button>
+                        <button class="tab-btn" onclick="showTab('panel')">Panel</button>
+                    </div>
+                    
+                    <!-- Users Tab -->
+                    <div id="usersTab" class="tab-content">
+                        <div id="usersList">
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Servers Tab -->
+                    <div id="serversTab" class="tab-content" style="display: none;">
+                        <div id="allServersList">
+                            <p>Loading servers...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Coins Tab -->
+                    <div id="coinsTab" class="tab-content" style="display: none;">
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Add/Remove Coins</div>
+                            <form id="coinManagementForm">
+                                <div class="form-group">
+                                    <label for="coinUsername">Username</label>
+                                    <input type="text" id="coinUsername" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="coinAmountInput">Amount</label>
+                                    <input type="number" id="coinAmountInput" required>
+                                    <small style="color: #cbd5e1;">Negative values remove coins</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Update Coins</button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Linkvertise Tab -->
+                    <div id="linkvertiseTab" class="tab-content" style="display: none;">
+                        <!-- Configuration Section -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Linkvertise Configuration</div>
+                            <form id="linkvertiseConfigForm">
+                                <div class="form-group">
+                                    <label for="publisherLink">Publisher Link</label>
+                                    <input type="text" id="publisherLink" placeholder="https://publisher.linkvertise.com/ac/1450748">
+                                    <small style="color: #cbd5e1;">Your Linkvertise publisher account link</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="publisherId">Publisher ID</label>
+                                    <input type="text" id="publisherId" placeholder="1450748">
+                                    <small style="color: #cbd5e1;">Extracted from your publisher link (optional)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="defaultCoins">Default Coins per Link</label>
+                                    <input type="number" id="defaultCoins" min="1" value="10">
+                                    <small style="color: #cbd5e1;">Default coin reward for new links</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cooldownSeconds">Cooldown Timer (seconds)</label>
+                                    <input type="number" id="cooldownSeconds" min="0" value="30">
+                                    <small style="color: #cbd5e1;">Time users must wait before completing the same link again (default: 30 seconds)</small>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Save Configuration</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Links Management Section -->
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <div class="card-header" style="margin: 0;">Manage Links</div>
+                                <button class="btn btn-primary" onclick="showAddLinkForm()">Add New Link</button>
+                            </div>
+                            
+                            <!-- Add/Edit Link Form (hidden by default) -->
+                            <div id="linkFormSection" style="display: none; margin-bottom: 20px; padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                <h3 style="color: #f8fafc; margin-bottom: 16px;" id="linkFormTitle">Add New Link</h3>
+                                <form id="linkForm">
+                                    <input type="hidden" id="linkId">
+                                    <div class="form-group">
+                                        <label for="linkTitle">Link Title</label>
+                                        <input type="text" id="linkTitle" required placeholder="e.g., Linkvertise Link #1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="linkUrl">Linkvertise URL</label>
+                                        <input type="url" id="linkUrl" required placeholder="https://linkvertise.com/...">
+                                        <small style="color: #cbd5e1;">The actual Linkvertise link users will complete</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="linkCoins">Coins Reward</label>
+                                        <input type="number" id="linkCoins" min="1" required value="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="linkActive" checked style="margin-right: 8px;">
+                                            Active (visible to users)
+                                        </label>
+                                    </div>
+                                    <div style="display: flex; gap: 12px;">
+                                        <button type="submit" class="btn btn-primary">Save Link</button>
+                                        <button type="button" class="btn btn-secondary" onclick="hideAddLinkForm()">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <div id="linksList">
+                                <p>Loading links...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Store Management Tab -->
+                    <div id="storeTab" class="tab-content" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">Resource Pricing Configuration</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Configure the prices for each resource type. Users will pay these prices when purchasing resources.
+                            </p>
+                            
+                            <form id="storePricesForm">
+                                <div style="display: grid; gap: 20px;">
+                                    <!-- RAM Pricing -->
+                                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                        <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px;">RAM Pricing</h3>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                            <div class="form-group">
+                                                <label for="ramCoins">Coins</label>
+                                                <input type="number" id="ramCoins" min="1" required>
+                                                <small style="color: #cbd5e1;">Number of coins</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="ramGB">GB</label>
+                                                <input type="number" id="ramGB" min="1" required>
+                                                <small style="color: #cbd5e1;">Amount of RAM in GB</small>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px;">
+                                            <small style="color: #cbd5e1;">Example: 1 coin = 1GB RAM, or 2 coins = 5GB RAM</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- CPU Pricing -->
+                                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                        <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px;">CPU Pricing</h3>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                            <div class="form-group">
+                                                <label for="cpuCoins">Coins</label>
+                                                <input type="number" id="cpuCoins" min="1" required>
+                                                <small style="color: #cbd5e1;">Number of coins</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="cpuPercent">CPU %</label>
+                                                <input type="number" id="cpuPercent" min="1" max="100" required>
+                                                <small style="color: #cbd5e1;">Percentage of CPU</small>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px;">
+                                            <small style="color: #cbd5e1;">Example: 1 coin = 1% CPU, or 2 coins = 5% CPU</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Storage Pricing -->
+                                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                        <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px;">Storage Pricing</h3>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                            <div class="form-group">
+                                                <label for="storageCoins">Coins</label>
+                                                <input type="number" id="storageCoins" min="1" required>
+                                                <small style="color: #cbd5e1;">Number of coins</small>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="storageGB">GB</label>
+                                                <input type="number" id="storageGB" min="1" required>
+                                                <small style="color: #cbd5e1;">Amount of storage in GB</small>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px;">
+                                            <small style="color: #cbd5e1;">Example: 1 coin = 1GB Storage, or 3 coins = 5GB Storage</small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Server Slot Pricing -->
+                                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                        <h3 style="color: #f8fafc; margin-bottom: 16px; font-size: 18px;">Server Slot Pricing</h3>
+                                        <div class="form-group">
+                                            <label for="serverSlotPrice">Price per Slot (Coins)</label>
+                                            <input type="number" id="serverSlotPrice" min="1" required>
+                                            <small style="color: #cbd5e1;">Number of coins required to purchase one additional server slot</small>
+                                        </div>
+                                        <div style="margin-top: 12px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px;">
+                                            <small style="color: #cbd5e1;">Users start with 1 server slot by default. They can purchase additional slots at this price.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Save Prices</button>
+                            </form>
+                            
+                            <div style="margin-top: 30px; padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                <h3 style="color: #f8fafc; margin-bottom: 16px;">Current Pricing</h3>
+                                <div id="currentPricing" style="display: grid; gap: 12px;">
+                                    <p style="color: #cbd5e1;">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Panel Tab -->
+                    <div id="panelTab" class="tab-content" style="display: none;">
+                        <!-- Panel Configuration -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Pterodactyl Panel Configuration</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Configure your Pterodactyl panel connection. Enter your panel URL and API key, then test the connection before saving.
+                            </p>
+                            
+                            <form id="panelConfigForm">
+                                <div class="form-group">
+                                    <label for="panelUrl">Panel URL</label>
+                                    <input type="url" id="panelUrl" placeholder="https://panel.yoursite.com" required>
+                                    <small style="color: #cbd5e1;">Your Pterodactyl panel URL (e.g., https://panel.yoursite.com)</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="panelApiKey">API Key</label>
+                                    <input type="text" id="panelApiKey" placeholder="ptlc_xxxxxxxxxxxxx" required>
+                                    <small style="color: #cbd5e1;">Your Pterodactyl API key (Application API key with Read & Write permissions)</small>
+                                </div>
+                                
+                                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                                    <button type="button" class="btn btn-secondary" onclick="testPanelConnection()">Test Connection</button>
+                                    <button type="submit" class="btn btn-primary">Connect</button>
+                                </div>
+                            </form>
+                            
+                            <div id="panelConnectionStatus" style="margin-top: 30px; padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                                <h3 style="color: #f8fafc; margin-bottom: 16px;">Connection Status</h3>
+                                <div id="connectionStatusInfo">
+                                    <p style="color: #cbd5e1;">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Eggs Management -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Game Types (Eggs)</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Manage available game types (eggs) from your Pterodactyl panel. Click "Fetch from Pterodactyl" to sync eggs.
+                            </p>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <button class="btn btn-primary" onclick="fetchEggs()">Fetch from Pterodactyl</button>
+                                <button class="btn btn-secondary" onclick="loadCachedEggs()" style="margin-left: 12px;">Load Cached</button>
+                            </div>
+                            
+                            <div id="eggsList">
+                                <p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load eggs.</p>
+                            </div>
+                        </div>
+
+                        <!-- Allocations Management -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Server Allocations</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Manage server allocations (IP:Port combinations). Click "Fetch from Pterodactyl" to sync available allocations.
+                            </p>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <button class="btn btn-primary" onclick="fetchAllocations()">Fetch from Pterodactyl</button>
+                                <button class="btn btn-secondary" onclick="loadCachedAllocations()" style="margin-left: 12px;">Load Cached</button>
+                            </div>
+                            
+                            <div id="allocationsList">
+                                <p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load allocations.</p>
+                            </div>
+                        </div>
+
+                        <!-- User Sync -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">Sync Existing Users</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Sync existing dashboard users to Pterodactyl. This will create Pterodactyl accounts for users who don't have one yet, or link existing Pterodactyl accounts if they already exist.
+                            </p>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <button class="btn btn-primary" onclick="syncUsers()">Sync Users to Pterodactyl</button>
+                            </div>
+                            
+                            <div id="userSyncResults" style="display: none;">
+                                <h4 style="color: #f8fafc; margin-bottom: 12px;">Sync Results</h4>
+                                <div id="userSyncResultsContent">
+                                    <p style="color: #cbd5e1;">Loading results...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Settings -->
+                        <div class="card">
+                            <div class="card-header">Default Settings</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Configure default nest and location IDs for server creation.
+                            </p>
+                            
+                            <form id="panelSettingsForm">
+                                <div class="form-group">
+                                    <label for="defaultNestId">Default Nest ID</label>
+                                    <input type="number" id="defaultNestId" placeholder="1">
+                                    <small style="color: #cbd5e1;">Default nest ID for new servers</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="defaultLocationId">Default Location ID</label>
+                                    <input type="number" id="defaultLocationId" placeholder="1">
+                                    <small style="color: #cbd5e1;">Default location ID for new servers</small>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Save Settings</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadSystemStats();
+            await loadUsers();
+            
+            // Attach coin management form event listener after DOM is loaded
+            const coinForm = document.getElementById('coinManagementForm');
+            if (coinForm) {
+                coinForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const username = document.getElementById('coinUsername').value.trim();
+                    const amountInput = document.getElementById('coinAmountInput').value.trim();
+                    
+                    // Validate inputs
+                    if (!username || username === '') {
+                        showNotification('Please enter a username', 'error');
+                        return;
+                    }
+                    
+                    if (!amountInput || amountInput === '') {
+                        showNotification('Please enter an amount', 'error');
+                        return;
+                    }
+                    
+                    // Parse amount - allow both positive and negative numbers
+                    const amount = parseFloat(amountInput);
+                    
+                    if (isNaN(amount) || !isFinite(amount)) {
+                        showNotification('Please enter a valid amount', 'error');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch('/admin/api/coins', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username: username, amount: amount })
+                        });
+                        
+                        // Check if response is ok
+                        if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ message: 'Unknown error occurred' }));
+                            showNotification(errorData.message || `Error: ${response.status} ${response.statusText}`, 'error');
+                            console.error('Coin update error:', errorData);
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showNotification(`Coins updated successfully. New balance: ${formatNumber(data.new_balance)}`, 'success');
+                            document.getElementById('coinManagementForm').reset();
+                            await loadUsers();
+                            await loadSystemStats();
+                            await loadUserData(); // Update coin balance in header
+                        } else {
+                            showNotification(data.message || 'Failed to update coins', 'error');
+                            console.error('Coin update failed:', data);
+                        }
+                    } catch (error) {
+                        console.error('Coin update exception:', error);
+                        showNotification('An error occurred while updating coins. Please check the console for details.', 'error');
+                    }
+                });
+            } else {
+                console.error('coinManagementForm not found');
+            }
+        });
+        
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + 'Tab').style.display = 'block';
+            event.target.classList.add('active');
+            
+            // Load data for tab
+            if (tabName === 'users') {
+                loadUsers();
+            } else if (tabName === 'servers') {
+                loadAllServers();
+            } else if (tabName === 'linkvertise') {
+                loadLinkvertiseConfig();
+                loadLinkvertiseLinks();
+            } else if (tabName === 'store') {
+                loadStorePrices();
+            } else if (tabName === 'panel') {
+                loadPanelConfig();
+                loadPanelSettings();
+            }
+        }
+        
+        async function loadSystemStats() {
+            try {
+                const response = await fetch('/admin/api/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalUsers').textContent = data.stats.total_users || 0;
+                    document.getElementById('totalServers').textContent = data.stats.total_servers || 0;
+                    document.getElementById('totalCoins').textContent = formatNumber(data.stats.total_coins || 0);
+                }
+            } catch (error) {
+                console.error('Error loading system stats:', error);
+            }
+        }
+        
+        async function loadUsers() {
+            try {
+                const response = await fetch('/admin/api/users');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayUsers(data.users || []);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+        
+        function displayUsers(users) {
+            const container = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<p>No users found</p>';
+                return;
+            }
+            
+            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: rgba(124, 58, 237, 0.2); backdrop-filter: blur(10px);"><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">ID</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Username</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Email</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Coins</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Admin</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Actions</th></tr></thead><tbody>';
+            
+            users.forEach(user => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(124, 58, 237, 0.2);">
+                        <td style="padding: 12px; color: #f8fafc;">${user.id}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(user.username)}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(user.email)}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(user.coins || 0)}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${user.is_admin ? 'Yes' : 'No'}</td>
+                        <td style="padding: 12px;">
+                            <button class="btn btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="deleteUser(${user.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+        
+        async function loadAllServers() {
+            try {
+                const response = await fetch('/admin/api/servers');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayAllServers(data.servers || []);
+                }
+            } catch (error) {
+                console.error('Error loading servers:', error);
+            }
+        }
+        
+        function displayAllServers(servers) {
+            const container = document.getElementById('allServersList');
+            
+            if (servers.length === 0) {
+                container.innerHTML = '<p>No servers found</p>';
+                return;
+            }
+            
+            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
+            html += '<thead><tr style="background: rgba(124, 58, 237, 0.2); backdrop-filter: blur(10px);"><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">ID</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Name</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Owner</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">RAM</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">CPU</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Storage</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Actions</th></tr></thead><tbody>';
+            
+            servers.forEach(server => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(124, 58, 237, 0.2);">
+                        <td style="padding: 12px; color: #f8fafc;">${server.id}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(server.name)}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(server.username || 'Unknown')}</td>
+                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(server.ram)}MB</td>
+                        <td style="padding: 12px; color: #f8fafc;">${server.cpu}%</td>
+                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(server.storage)}MB</td>
+                        <td style="padding: 12px;">
+                            <button class="btn btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="deleteServerAdmin(${server.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        }
+        
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user? This will also delete all their servers.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('User deleted successfully', 'success');
+                    await loadUsers();
+                    await loadSystemStats();
+                } else {
+                    showNotification(data.message || 'Failed to delete user', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        }
+        
+        async function deleteServerAdmin(serverId) {
+            if (!confirm('Are you sure you want to delete this server?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/api/servers/${serverId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Server deleted successfully', 'success');
+                    await loadAllServers();
+                    await loadSystemStats();
+                } else {
+                    showNotification(data.message || 'Failed to delete server', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        }
+        
+        
+        // Linkvertise Management Functions
+        async function loadLinkvertiseConfig() {
+            try {
+                const response = await fetch('/admin/api/linkvertise/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.config) {
+                        document.getElementById('publisherLink').value = data.config.publisher_link || '';
+                        document.getElementById('publisherId').value = data.config.publisher_id || '';
+                        document.getElementById('defaultCoins').value = data.config.default_coins || 10;
+                        document.getElementById('cooldownSeconds').value = data.config.cooldown_seconds || 30;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading Linkvertise config:', error);
+            }
+        }
+        
+        async function loadLinkvertiseLinks() {
+            try {
+                const response = await fetch('/admin/api/linkvertise/links');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayLinkvertiseLinks(data.links || []);
+                }
+            } catch (error) {
+                console.error('Error loading links:', error);
+                document.getElementById('linksList').innerHTML = '<p style="color: #cbd5e1;">Error loading links</p>';
+            }
+        }
+        
+        function displayLinkvertiseLinks(links) {
+            const container = document.getElementById('linksList');
+            
+            if (links.length === 0) {
+                container.innerHTML = '<p style="color: #cbd5e1;">No links configured. Add your first link above!</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 12px;">';
+            links.forEach(link => {
+                const escapedUrl = escapeHtml(link.url);
+                const displayUrl = link.url.length > 60 ? link.url.substring(0, 60) + '...' : link.url;
+                html += `
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <h4 style="color: #f8fafc; margin: 0; font-weight: 600;">${escapeHtml(link.title)}</h4>
+                                ${link.is_active ? '<span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Active</span>' : '<span style="background: #6c757d; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">Inactive</span>'}
+                            </div>
+                            <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 4px;">
+                                <strong>URL:</strong> <a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" style="color: #7c3aed; text-decoration: none;">${escapeHtml(displayUrl)}</a>
+                            </div>
+                            <div style="color: #cbd5e1; font-size: 14px;">
+                                <strong>Coins:</strong> ${link.coins_earned} | <strong>Priority:</strong> ${link.priority || 0}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="editLink(${link.id})">Edit</button>
+                            <button class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;" onclick="deleteLink(${link.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function showAddLinkForm() {
+            document.getElementById('linkFormSection').style.display = 'block';
+            document.getElementById('linkFormTitle').textContent = 'Add New Link';
+            document.getElementById('linkForm').reset();
+            document.getElementById('linkId').value = '';
+            const defaultCoins = document.getElementById('defaultCoins').value || 10;
+            document.getElementById('linkCoins').value = defaultCoins;
+            document.getElementById('linkActive').checked = true;
+        }
+        
+        function hideAddLinkForm() {
+            document.getElementById('linkFormSection').style.display = 'none';
+        }
+        
+        async function editLink(linkId) {
+            try {
+                const response = await fetch(`/admin/api/linkvertise/links/${linkId}`);
+                const data = await response.json();
+                if (data.success && data.link) {
+                    const link = data.link;
+                    document.getElementById('linkId').value = link.id;
+                    document.getElementById('linkTitle').value = link.title;
+                    document.getElementById('linkUrl').value = link.url;
+                    document.getElementById('linkCoins').value = link.coins_earned;
+                    document.getElementById('linkActive').checked = link.is_active === 1;
+                    document.getElementById('linkFormTitle').textContent = 'Edit Link';
+                    document.getElementById('linkFormSection').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading link:', error);
+                showNotification('Error loading link', 'error');
+            }
+        }
+        
+        async function deleteLink(linkId) {
+            if (!confirm('Are you sure you want to delete this link?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/api/linkvertise/links/${linkId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Link deleted successfully', 'success');
+                    await loadLinkvertiseLinks();
+                } else {
+                    showNotification(data.message || 'Failed to delete link', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        }
+        
+        // Linkvertise Config Form
+        document.getElementById('linkvertiseConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const config = {
+                publisher_link: document.getElementById('publisherLink').value,
+                publisher_id: document.getElementById('publisherId').value,
+                default_coins: parseInt(document.getElementById('defaultCoins').value),
+                cooldown_seconds: parseInt(document.getElementById('cooldownSeconds').value)
+            };
+            
+            try {
+                const response = await fetch('/admin/api/linkvertise/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Configuration saved successfully', 'success');
+                } else {
+                    showNotification(data.message || 'Failed to save configuration', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        });
+        
+        // Link Form
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const linkData = {
+                title: document.getElementById('linkTitle').value,
+                url: document.getElementById('linkUrl').value,
+                coins_earned: parseInt(document.getElementById('linkCoins').value),
+                is_active: document.getElementById('linkActive').checked ? 1 : 0
+            };
+            
+            const linkId = document.getElementById('linkId').value;
+            const url = linkId ? `/admin/api/linkvertise/links/${linkId}` : '/admin/api/linkvertise/links';
+            const method = linkId ? 'PUT' : 'POST';
+            
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(linkData)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification(linkId ? 'Link updated successfully' : 'Link added successfully', 'success');
+                    hideAddLinkForm();
+                    await loadLinkvertiseLinks();
+                } else {
+                    showNotification(data.message || 'Failed to save link', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        });
+        
+        // Store Management Functions
+        async function loadStorePrices() {
+            try {
+                const response = await fetch('/admin/api/store/prices');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.prices) {
+                        const prices = data.prices;
+                        // Set default values if not present (for migration)
+                        document.getElementById('ramCoins').value = prices.ram_coins_per_set || 1;
+                        document.getElementById('ramGB').value = prices.ram_gb_per_set || 1;
+                        document.getElementById('cpuCoins').value = prices.cpu_coins_per_set || 1;
+                        document.getElementById('cpuPercent').value = prices.cpu_percent_per_set || 1;
+                        document.getElementById('storageCoins').value = prices.storage_coins_per_set || 1;
+                        document.getElementById('storageGB').value = prices.storage_gb_per_set || 1;
+                        document.getElementById('serverSlotPrice').value = prices.server_slot_price || 100;
+                        
+                        // Display current pricing
+                        displayCurrentPricing(prices);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading store prices:', error);
+            }
+        }
+        
+        function displayCurrentPricing(prices) {
+            const container = document.getElementById('currentPricing');
+            
+            const ramCoins = prices.ram_coins_per_set || 1;
+            const ramGB = prices.ram_gb_per_set || 1;
+            const cpuCoins = prices.cpu_coins_per_set || 1;
+            const cpuPercent = prices.cpu_percent_per_set || 1;
+            const storageCoins = prices.storage_coins_per_set || 1;
+            const storageGB = prices.storage_gb_per_set || 1;
+            
+            container.innerHTML = `
+                <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #f8fafc; font-weight: 600;">RAM:</strong>
+                        <span style="color: #cbd5e1;">${ramCoins} coin${ramCoins !== 1 ? 's' : ''} = ${ramGB}GB</span>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 14px;">1 coin = ${(ramGB / ramCoins).toFixed(2)}GB RAM</div>
+                </div>
+                <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #f8fafc; font-weight: 600;">CPU:</strong>
+                        <span style="color: #cbd5e1;">${cpuCoins} coin${cpuCoins !== 1 ? 's' : ''} = ${cpuPercent}%</span>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 14px;">1 coin = ${(cpuPercent / cpuCoins).toFixed(2)}% CPU</div>
+                </div>
+                <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #f8fafc; font-weight: 600;">Storage:</strong>
+                        <span style="color: #cbd5e1;">${storageCoins} coin${storageCoins !== 1 ? 's' : ''} = ${storageGB}GB</span>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 14px;">1 coin = ${(storageGB / storageCoins).toFixed(2)}GB Storage</div>
+                </div>
+                <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <strong style="color: #f8fafc; font-weight: 600;">Server Slot:</strong>
+                        <span style="color: #cbd5e1;">${prices.server_slot_price || 100} coin${(prices.server_slot_price || 100) !== 1 ? 's' : ''} = 1 Slot</span>
+                    </div>
+                    <div style="color: #94a3b8; font-size: 14px;">Users can purchase additional server slots at this price</div>
+                </div>
+            `;
+        }
+        
+        // Store Prices Form
+        document.getElementById('storePricesForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const prices = {
+                ram_coins_per_set: parseInt(document.getElementById('ramCoins').value),
+                ram_gb_per_set: parseInt(document.getElementById('ramGB').value),
+                cpu_coins_per_set: parseInt(document.getElementById('cpuCoins').value),
+                cpu_percent_per_set: parseInt(document.getElementById('cpuPercent').value),
+                storage_coins_per_set: parseInt(document.getElementById('storageCoins').value),
+                storage_gb_per_set: parseInt(document.getElementById('storageGB').value),
+                server_slot_price: parseInt(document.getElementById('serverSlotPrice').value)
+            };
+            
+            // Validate prices
+            if (prices.ram_coins_per_set < 1 || prices.ram_gb_per_set < 1 || 
+                prices.cpu_coins_per_set < 1 || prices.cpu_percent_per_set < 1 || 
+                prices.storage_coins_per_set < 1 || prices.storage_gb_per_set < 1) {
+                showNotification('All values must be at least 1', 'error');
+                return;
+            }
+            
+            if (prices.cpu_percent_per_set > 100) {
+                showNotification('CPU percentage cannot exceed 100%', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/store/prices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prices)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Prices updated successfully', 'success');
+                    await loadStorePrices(); // Reload to show updated pricing
+                } else {
+                    showNotification(data.message || 'Failed to update prices', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        });
+        
+        // Panel Configuration Functions
+        async function loadPanelConfig() {
+            try {
+                const response = await fetch('/admin/api/panel/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.config) {
+                        document.getElementById('panelUrl').value = data.config.panel_url || '';
+                        document.getElementById('panelApiKey').value = data.config.api_key || '';
+                        displayConnectionStatus(data.config);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading panel config:', error);
+            }
+        }
+        
+        function displayConnectionStatus(config) {
+            const container = document.getElementById('connectionStatusInfo');
+            const connectBtn = document.getElementById('panelConfigForm')?.querySelector('button[type="submit"]');
+            
+            if (config.last_connected_at) {
+                const lastConnected = new Date(config.last_connected_at);
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 24px; color: #4CAF50;">✅</span>
+                            <div>
+                                <strong style="color: #f8fafc; font-weight: 600;">Connected</strong>
+                                <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 14px;">
+                                    Last successful connection: ${formatDate(config.last_connected_at)}
+                                </p>
+                                <p style="margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;">
+                                    Panel URL: ${escapeHtml(config.panel_url || 'Not configured')}
+                                </p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="disconnectPanel()" style="background: #dc2626; border-color: #dc2626; color: white;">
+                            Disconnect
+                        </button>
+                    </div>
+                `;
+                
+                // Disable Connect button if already connected
+                if (connectBtn) {
+                    connectBtn.disabled = true;
+                    connectBtn.style.opacity = '0.6';
+                    connectBtn.style.cursor = 'not-allowed';
+                    connectBtn.title = 'Please disconnect the current connection before connecting to a different panel.';
+                }
+            } else if (config.panel_url || config.api_key) {
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px; color: #ff9800;">⚠️</span>
+                        <div>
+                            <strong style="color: #f8fafc; font-weight: 600;">Not Connected</strong>
+                            <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 14px;">
+                                Configuration found but connection not tested. Click "Test Connection" to verify.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                // Enable Connect button
+                if (connectBtn) {
+                    connectBtn.disabled = false;
+                    connectBtn.style.opacity = '1';
+                    connectBtn.style.cursor = 'pointer';
+                    connectBtn.title = '';
+                }
+            } else {
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 24px; color: #94a3b8;">ℹ️</span>
+                        <div>
+                            <strong style="color: #f8fafc; font-weight: 600;">Not Configured</strong>
+                            <p style="margin: 4px 0 0 0; color: #cbd5e1; font-size: 14px;">
+                                Enter your panel URL and API key, then click "Test Connection" to verify before connecting.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                // Enable Connect button
+                if (connectBtn) {
+                    connectBtn.disabled = false;
+                    connectBtn.style.opacity = '1';
+                    connectBtn.style.cursor = 'pointer';
+                    connectBtn.title = '';
+                }
+            }
+        }
+        
+        async function testPanelConnection() {
+            const panelUrl = document.getElementById('panelUrl').value.trim();
+            const apiKey = document.getElementById('panelApiKey').value.trim();
+            
+            if (!panelUrl || !apiKey) {
+                showNotification('Please enter both Panel URL and API Key', 'error');
+                return;
+            }
+            
+            // Validate URL format
+            try {
+                new URL(panelUrl);
+            } catch (error) {
+                showNotification('Invalid URL format. Please enter a valid URL (e.g., https://panel.yoursite.com)', 'error');
+                return;
+            }
+            
+            const testBtn = event.target;
+            const originalText = testBtn.textContent;
+            testBtn.disabled = true;
+            testBtn.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('/admin/api/panel/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Connection test successful! You can now click "Connect" to save the configuration.', 'success');
+                } else {
+                    showNotification(data.message || 'Connection test failed', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred while testing connection', 'error');
+                console.error('Test connection error:', error);
+            } finally {
+                testBtn.disabled = false;
+                testBtn.textContent = originalText;
+            }
+        }
+        
+        // Disconnect Panel Function
+        async function disconnectPanel() {
+            const confirmMessage = 'Are you sure you want to disconnect the Pterodactyl panel?\n\n' +
+                'This will completely remove:\n' +
+                '• Panel configuration (URL and API key)\n' +
+                '• All cached game types (eggs)\n' +
+                '• All cached server allocations\n' +
+                '• Default settings\n' +
+                '• Pterodactyl references from existing servers\n\n' +
+                'This action cannot be undone. You will need to reconfigure everything from scratch.';
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            try {
+                showNotification('Disconnecting panel and removing all data...', 'info');
+                
+                const response = await fetch('/admin/api/panel/disconnect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Panel disconnected successfully. All Pterodactyl data has been removed.', 'success');
+                    
+                    // Clear the form fields
+                    document.getElementById('panelUrl').value = '';
+                    document.getElementById('panelApiKey').value = '';
+                    
+                    // Clear eggs and allocations lists
+                    document.getElementById('eggsList').innerHTML = '<p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load eggs.</p>';
+                    document.getElementById('allocationsList').innerHTML = '<p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load allocations.</p>';
+                    
+                    // Clear settings form
+                    document.getElementById('defaultNestId').value = '';
+                    document.getElementById('defaultLocationId').value = '';
+                    
+                    // Reload the config to show disconnected status
+                    await loadPanelConfig();
+                    await loadPanelSettings();
+                    
+                    // Re-enable Connect button
+                    const connectBtn = document.getElementById('panelConfigForm')?.querySelector('button[type="submit"]');
+                    if (connectBtn) {
+                        connectBtn.disabled = false;
+                        connectBtn.style.opacity = '1';
+                        connectBtn.style.cursor = 'pointer';
+                        connectBtn.title = '';
+                    }
+                } else {
+                    showNotification(data.message || 'Failed to disconnect panel', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred while disconnecting', 'error');
+                console.error('Disconnect error:', error);
+            }
+        }
+        
+        // Eggs Management Functions
+        async function fetchEggs() {
+            try {
+                showNotification('Fetching eggs from Pterodactyl...', 'info');
+                const response = await fetch('/admin/api/panel/eggs');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayEggs(data.eggs);
+                    showNotification(`Found ${data.eggs.length} eggs. Click "Sync to Database" to save them.`, 'success');
+                } else {
+                    showNotification(data.message || 'Failed to fetch eggs', 'error');
+                }
+            } catch (error) {
+                showNotification('Error fetching eggs', 'error');
+                console.error('Fetch eggs error:', error);
+            }
+        }
+        
+        async function loadCachedEggs() {
+            try {
+                const response = await fetch('/admin/api/panel/eggs/cached');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayEggs(data.eggs);
+                    showNotification(`Loaded ${data.eggs.length} cached eggs`, 'success');
+                } else {
+                    showNotification('Failed to load cached eggs', 'error');
+                }
+            } catch (error) {
+                showNotification('Error loading cached eggs', 'error');
+                console.error('Load cached eggs error:', error);
+            }
+        }
+        
+        function displayEggs(eggs) {
+            const container = document.getElementById('eggsList');
+            
+            if (!eggs || eggs.length === 0) {
+                container.innerHTML = '<p style="color: #cbd5e1;">No eggs found.</p>';
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="syncSelectedEggs()">Sync Selected to Database</button>
+                    <button class="btn btn-secondary" onclick="selectAllEggs()">Select All</button>
+                    <button class="btn btn-secondary" onclick="deselectAllEggs()">Deselect All</button>
+                    <span id="selectedCount" style="color: #cbd5e1; margin-left: auto; font-weight: 500;">0 selected</span>
+                </div>
+            `;
+            html += '<div style="display: grid; gap: 12px;">';
+            
+            eggs.forEach((egg, index) => {
+                const eggId = egg.id || egg.egg_id || egg.attributes?.id;
+                const eggName = egg.name || egg.attributes?.name || 'Unknown';
+                const nestId = egg.nest_id || egg.attributes?.nest_id || 'N/A';
+                const dockerImage = egg.docker_image || egg.attributes?.docker_image || 'N/A';
+                
+                html += `
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; display: flex; align-items: start; gap: 12px;">
+                        <input type="checkbox" id="egg-${index}" class="egg-checkbox" data-egg-id="${eggId}" onchange="updateSelectedCount()" style="margin-top: 4px; width: 18px; height: 18px; cursor: pointer; accent-color: #7c3aed;">
+                        <div style="flex: 1;">
+                            <h4 style="color: #f8fafc; margin: 0 0 8px 0;">${eggName}</h4>
+                            <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Egg ID:</strong> ${eggId}</p>
+                            <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Nest ID:</strong> ${nestId}</p>
+                            <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Docker Image:</strong> ${dockerImage}</p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Store eggs globally for sync
+            window.currentEggs = eggs;
+            
+            // Initialize selected count
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.egg-checkbox');
+            const selected = document.querySelectorAll('.egg-checkbox:checked');
+            const countElement = document.getElementById('selectedCount');
+            
+            if (countElement) {
+                countElement.textContent = `${selected.length} of ${checkboxes.length} selected`;
+            }
+        }
+        
+        function selectAllEggs() {
+            const checkboxes = document.querySelectorAll('.egg-checkbox');
+            checkboxes.forEach(checkbox => checkbox.checked = true);
+            updateSelectedCount();
+        }
+        
+        function deselectAllEggs() {
+            const checkboxes = document.querySelectorAll('.egg-checkbox');
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+            updateSelectedCount();
+        }
+        
+        async function syncSelectedEggs() {
+            if (!window.currentEggs) {
+                showNotification('Please fetch eggs first', 'error');
+                return;
+            }
+            
+            // Get selected egg IDs
+            const selectedCheckboxes = document.querySelectorAll('.egg-checkbox:checked');
+            const selectedEggIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.eggId));
+            
+            if (selectedEggIds.length === 0) {
+                showNotification('Please select at least one egg to sync', 'error');
+                return;
+            }
+            
+            // Filter currentEggs to only include selected ones
+            const selectedEggs = window.currentEggs.filter(egg => {
+                const eggId = egg.id || egg.egg_id || egg.attributes?.id;
+                return selectedEggIds.includes(eggId);
+            });
+            
+            try {
+                showNotification(`Syncing ${selectedEggIds.length} selected egg(s) to database...`, 'info');
+                const response = await fetch('/admin/api/panel/eggs/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ egg_ids: selectedEggIds, eggs: selectedEggs })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Successfully synced ${data.synced} egg(s) to database`, 'success');
+                    if (data.errors && data.errors.length > 0) {
+                        console.warn('Some eggs had errors:', data.errors);
+                    }
+                    loadCachedEggs();
+                } else {
+                    showNotification(data.message || 'Failed to sync eggs', 'error');
+                }
+            } catch (error) {
+                showNotification('Error syncing eggs', 'error');
+                console.error('Sync eggs error:', error);
+            }
+        }
+        
+        // Allocations Management Functions
+        async function fetchAllocations() {
+            try {
+                showNotification('Fetching allocations from Pterodactyl...', 'info');
+                const response = await fetch('/admin/api/panel/allocations');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAllocations(data.allocations);
+                    showNotification(`Found ${data.allocations.length} allocations. Click "Sync to Database" to save them.`, 'success');
+                } else {
+                    showNotification(data.message || 'Failed to fetch allocations', 'error');
+                }
+            } catch (error) {
+                showNotification('Error fetching allocations', 'error');
+                console.error('Fetch allocations error:', error);
+            }
+        }
+        
+        async function loadCachedAllocations() {
+            try {
+                const response = await fetch('/admin/api/panel/allocations/cached');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayAllocations(data.allocations);
+                    showNotification(`Loaded ${data.allocations.length} cached allocations`, 'success');
+                } else {
+                    showNotification('Failed to load cached allocations', 'error');
+                }
+            } catch (error) {
+                showNotification('Error loading cached allocations', 'error');
+                console.error('Load cached allocations error:', error);
+            }
+        }
+        
+        function displayAllocations(allocations) {
+            const container = document.getElementById('allocationsList');
+            
+            if (!allocations || allocations.length === 0) {
+                container.innerHTML = '<p style="color: #cbd5e1;">No allocations found.</p>';
+                return;
+            }
+            
+            let html = '<div style="margin-bottom: 20px;"><button class="btn btn-primary" onclick="syncAllocations()">Sync to Database</button></div>';
+            html += '<div style="display: grid; gap: 12px; max-height: 500px; overflow-y: auto;">';
+            
+            allocations.forEach(allocation => {
+                const allocId = allocation.id || allocation.allocation_id || allocation.attributes?.id;
+                const ip = allocation.ip || allocation.attributes?.ip || 'N/A';
+                const port = allocation.port || allocation.attributes?.port || 'N/A';
+                const nodeId = allocation.node_id || allocation.attributes?.node_id || 'N/A';
+                const priority = allocation.priority || 0;
+                
+                html += `
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 style="color: #f8fafc; margin: 0 0 8px 0;">${ip}:${port}</h4>
+                                <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Allocation ID:</strong> ${allocId}</p>
+                                <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Node ID:</strong> ${nodeId}</p>
+                                <p style="color: #cbd5e1; margin: 4px 0; font-size: 14px;"><strong>Priority:</strong> ${priority}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Store allocations globally for sync
+            window.currentAllocations = allocations;
+        }
+        
+        async function syncAllocations() {
+            if (!window.currentAllocations) {
+                showNotification('Please fetch allocations first', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('Syncing allocations to database...', 'info');
+                const response = await fetch('/admin/api/panel/allocations/sync', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification(`Successfully synced ${data.synced} allocations to database`, 'success');
+                    loadCachedAllocations();
+                } else {
+                    showNotification(data.message || 'Failed to sync allocations', 'error');
+                }
+            } catch (error) {
+                showNotification('Error syncing allocations', 'error');
+                console.error('Sync allocations error:', error);
+            }
+        }
+        
+        // Panel Settings Functions
+        async function loadPanelSettings() {
+            try {
+                const response = await fetch('/admin/api/panel/settings');
+                const data = await response.json();
+                
+                if (data.success && data.settings) {
+                    document.getElementById('defaultNestId').value = data.settings.default_nest_id || '';
+                    document.getElementById('defaultLocationId').value = data.settings.default_location_id || '';
+                }
+            } catch (error) {
+                console.error('Error loading panel settings:', error);
+            }
+        }
+        
+        // Sync Users Function
+        async function syncUsers() {
+            if (!confirm('This will sync all existing dashboard users to Pterodactyl. Users without Pterodactyl accounts will be created, and existing accounts will be linked. Continue?')) {
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('userSyncResults');
+            const resultsContent = document.getElementById('userSyncResultsContent');
+            const syncBtn = event.target;
+            const originalText = syncBtn.textContent;
+            
+            syncBtn.disabled = true;
+            syncBtn.textContent = 'Syncing...';
+            resultsDiv.style.display = 'block';
+            resultsContent.innerHTML = '<p style="color: #cbd5e1;">Syncing users, please wait...</p>';
+            
+            try {
+                const response = await fetch('/admin/api/panel/sync-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let html = `
+                        <div style="padding: 16px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; margin-bottom: 16px;">
+                            <strong style="color: #4caf50; font-size: 16px;">✓ ${data.message}</strong>
+                            <div style="color: #cbd5e1; margin-top: 8px; font-size: 14px;">
+                                <div>Total users processed: ${data.total}</div>
+                                <div>Successfully synced: <strong style="color: #4caf50;">${data.synced}</strong></div>
+                                <div>Failed: <strong style="color: ${data.failed > 0 ? '#ff5722' : '#4caf50'};">${data.failed}</strong></div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    if (data.results && data.results.length > 0) {
+                        html += '<div style="max-height: 400px; overflow-y: auto;">';
+                        html += '<h5 style="color: #f8fafc; margin-bottom: 12px;">Detailed Results:</h5>';
+                        html += '<div style="display: grid; gap: 8px;">';
+                        
+                        data.results.forEach(result => {
+                            const statusColor = result.status === 'created' ? '#4caf50' : 
+                                               result.status === 'linked' ? '#2196f3' : '#ff5722';
+                            const statusIcon = result.status === 'created' ? '✓' : 
+                                              result.status === 'linked' ? '↗' : '✗';
+                            
+                            html += `
+                                <div style="padding: 12px; background: rgba(30, 30, 50, 0.4); border: 1px solid ${statusColor}40; border-radius: 8px; border-left: 3px solid ${statusColor};">
+                                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                                        <div style="flex: 1;">
+                                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                                <span style="color: ${statusColor}; font-weight: 600;">${statusIcon} ${result.username}</span>
+                                                <span style="color: ${statusColor}; font-size: 12px; text-transform: uppercase;">${result.status}</span>
+                                            </div>
+                                            <div style="color: #94a3b8; font-size: 12px; margin-bottom: 4px;">${result.email}</div>
+                                            <div style="color: #cbd5e1; font-size: 12px;">${result.message}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += '</div></div>';
+                    }
+                    
+                    resultsContent.innerHTML = html;
+                    showNotification(data.message, 'success');
+                } else {
+                    resultsContent.innerHTML = `
+                        <div style="padding: 16px; background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.3); border-radius: 12px;">
+                            <strong style="color: #ff5722;">✗ Sync Failed</strong>
+                            <p style="color: #cbd5e1; margin-top: 8px;">${data.message || 'Failed to sync users'}</p>
+                        </div>
+                    `;
+                    showNotification(data.message || 'Failed to sync users', 'error');
+                }
+            } catch (error) {
+                resultsContent.innerHTML = `
+                    <div style="padding: 16px; background: rgba(255, 87, 34, 0.1); border: 1px solid rgba(255, 87, 34, 0.3); border-radius: 12px;">
+                        <strong style="color: #ff5722;">✗ Error</strong>
+                        <p style="color: #cbd5e1; margin-top: 8px;">An error occurred while syncing users</p>
+                    </div>
+                `;
+                showNotification('An error occurred while syncing users', 'error');
+                console.error('Sync users error:', error);
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.textContent = originalText;
+            }
+        }
+        
+        // Panel Config Form
+        document.getElementById('panelConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const panelUrl = document.getElementById('panelUrl').value.trim();
+            const apiKey = document.getElementById('panelApiKey').value.trim();
+            
+            if (!panelUrl || !apiKey) {
+                showNotification('Panel URL and API key are required', 'error');
+                return;
+            }
+            
+            // Validate URL format
+            try {
+                new URL(panelUrl);
+            } catch (error) {
+                showNotification('Invalid URL format. Please enter a valid URL', 'error');
+                return;
+            }
+            
+            const connectBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = connectBtn.textContent;
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Connecting...';
+            
+            try {
+                const response = await fetch('/admin/api/panel/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Panel configuration saved and connected successfully!', 'success');
+                    await loadPanelConfig(); // Reload to show updated status
+                } else {
+                    showNotification(data.message || 'Failed to connect', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Connect error:', error);
+            } finally {
+                connectBtn.disabled = false;
+                connectBtn.textContent = originalText;
+            }
+        });
+        
+        // Panel Settings Form
+        document.getElementById('panelSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const defaultNestId = document.getElementById('defaultNestId').value.trim();
+            const defaultLocationId = document.getElementById('defaultLocationId').value.trim();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            
+            try {
+                const response = await fetch('/admin/api/panel/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        default_nest_id: defaultNestId ? parseInt(defaultNestId) : null,
+                        default_location_id: defaultLocationId ? parseInt(defaultLocationId) : null
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Settings saved successfully', 'success');
+                } else {
+                    showNotification(data.message || 'Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Save settings error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+        
+    </script>
+    <style>
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #cbd5e1;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+        
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-btn:hover {
+            color: #667eea;
+        }
+    </style>
+</body>
+</html>
+

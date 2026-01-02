@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resource Store - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item active" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>Resource Store</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="card">
+                    <div class="card-header">Purchase Resources</div>
+                    <p style="margin-bottom: 20px; color: #cbd5e1;">
+                        Use your coins to purchase resources. These resources will be added to your resource pool and can be used when creating new servers.
+                    </p>
+                    
+                    <form id="purchaseForm">
+                        <div class="form-group">
+                            <label for="resourceType">Resource Type</label>
+                            <select id="resourceType" required>
+                                <option value="">Select resource type</option>
+                                <option value="ram">RAM (Memory)</option>
+                                <option value="cpu">CPU Limit</option>
+                                <option value="storage">Storage</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="amount">Amount</label>
+                            <input type="number" id="amount" min="1" required>
+                            <small style="color: #cbd5e1; display: block; margin-top: 4px;">
+                                <span id="resourceUnit">units</span> - Cost: <span id="costDisplay">0</span> coins
+                            </small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Purchase</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Purchase Server Slot</div>
+                    <p style="margin-bottom: 20px; color: #cbd5e1;">
+                        Buy additional server slots to create more servers. You start with 1 slot by default.
+                    </p>
+                    <div id="serverSlotInfo" style="padding: 16px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; margin-bottom: 16px;">
+                        <p style="color: #cbd5e1; margin: 0;">Loading slot information...</p>
+                    </div>
+                    <button id="purchaseSlotBtn" class="btn btn-primary" onclick="purchaseServerSlot()">Purchase Server Slot</button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Pricing</div>
+                    <div style="display: grid; gap: 12px;">
+                        <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            <strong style="color: #f8fafc; font-weight: 600;">RAM:</strong> <span style="color: #cbd5e1;">1 coin per 10MB</span>
+                        </div>
+                        <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            <strong style="color: #f8fafc; font-weight: 600;">CPU:</strong> <span style="color: #cbd5e1;">1 coin per 1% CPU limit</span>
+                        </div>
+                        <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                            <strong style="color: #f8fafc; font-weight: 600;">Storage:</strong> <span style="color: #cbd5e1;">1 coin per 50MB</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Purchase History</div>
+                    <div id="purchaseHistory">
+                        <p>Loading history...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        let resourcePrices = {
+            ram_coins_per_set: 1,
+            ram_gb_per_set: 1,
+            cpu_coins_per_set: 1,
+            cpu_percent_per_set: 1,
+            storage_coins_per_set: 1,
+            storage_gb_per_set: 1
+        };
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            checkAdminAccess();
+            
+            // Load resource prices
+            try {
+                const pricesResponse = await fetch('/servers/api/resource-prices');
+                if (pricesResponse.ok) {
+                    const pricesData = await pricesResponse.json();
+                    if (pricesData.success && pricesData.prices) {
+                        resourcePrices = pricesData.prices;
+                        updatePricingDisplay();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading resource prices:', error);
+            }
+            
+            await loadPurchaseHistory();
+            await loadServerSlotInfo();
+            
+            // Update cost when amount or resource type changes
+            document.getElementById('amount').addEventListener('input', updateCost);
+            document.getElementById('resourceType').addEventListener('change', updateCost);
+        });
+        
+        function updatePricingDisplay() {
+            const ramCoins = resourcePrices.ram_coins_per_set || 1;
+            const ramGB = resourcePrices.ram_gb_per_set || 1;
+            const cpuCoins = resourcePrices.cpu_coins_per_set || 1;
+            const cpuPercent = resourcePrices.cpu_percent_per_set || 1;
+            const storageCoins = resourcePrices.storage_coins_per_set || 1;
+            const storageGB = resourcePrices.storage_gb_per_set || 1;
+            
+            // Calculate per-coin values
+            const ramPerCoin = (ramGB / ramCoins).toFixed(2);
+            const cpuPerCoin = (cpuPercent / cpuCoins).toFixed(2);
+            const storagePerCoin = (storageGB / storageCoins).toFixed(2);
+            
+            // Update pricing cards - find the pricing card section
+            const cards = document.querySelectorAll('.card');
+            if (cards.length > 1) {
+                const pricingSection = cards[1];
+                if (pricingSection && pricingSection.querySelector('.card-header')?.textContent === 'Pricing') {
+                    pricingSection.innerHTML = `
+                        <div class="card-header">Pricing</div>
+                        <div style="display: grid; gap: 12px;">
+                            <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                                <strong style="color: #f8fafc; font-weight: 600;">RAM:</strong> <span style="color: #cbd5e1;">${ramCoins} coin${ramCoins !== 1 ? 's' : ''} = ${ramGB}GB</span>
+                                <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">1 coin = ${ramPerCoin}GB</div>
+                            </div>
+                            <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                                <strong style="color: #f8fafc; font-weight: 600;">CPU:</strong> <span style="color: #cbd5e1;">${cpuCoins} coin${cpuCoins !== 1 ? 's' : ''} = ${cpuPercent}%</span>
+                                <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">1 coin = ${cpuPerCoin}%</div>
+                            </div>
+                            <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                                <strong style="color: #f8fafc; font-weight: 600;">Storage:</strong> <span style="color: #cbd5e1;">${storageCoins} coin${storageCoins !== 1 ? 's' : ''} = ${storageGB}GB</span>
+                                <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">1 coin = ${storagePerCoin}GB</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function updateCost() {
+            const resourceType = document.getElementById('resourceType').value;
+            const amount = parseInt(document.getElementById('amount').value) || 0;
+            const unitSpan = document.getElementById('resourceUnit');
+            const costSpan = document.getElementById('costDisplay');
+            
+            if (!resourceType) {
+                unitSpan.textContent = 'units';
+                costSpan.textContent = '0';
+                return;
+            }
+            
+            let cost = 0;
+            let unit = '';
+            
+            switch(resourceType) {
+                case 'ram':
+                    // User enters GB, calculate directly
+                    const ramCoinsPerSet = resourcePrices.ram_coins_per_set || 1;
+                    const ramGBPerSet = resourcePrices.ram_gb_per_set || 1;
+                    cost = Math.ceil((amount / ramGBPerSet) * ramCoinsPerSet);
+                    unit = 'GB';
+                    break;
+                case 'cpu':
+                    const cpuCoinsPerSet = resourcePrices.cpu_coins_per_set || 1;
+                    const cpuPercentPerSet = resourcePrices.cpu_percent_per_set || 1;
+                    cost = Math.ceil((amount / cpuPercentPerSet) * cpuCoinsPerSet);
+                    unit = '%';
+                    break;
+                case 'storage':
+                    // User enters GB, calculate directly
+                    const storageCoinsPerSet = resourcePrices.storage_coins_per_set || 1;
+                    const storageGBPerSet = resourcePrices.storage_gb_per_set || 1;
+                    cost = Math.ceil((amount / storageGBPerSet) * storageCoinsPerSet);
+                    unit = 'GB';
+                    break;
+            }
+            
+            unitSpan.textContent = unit;
+            costSpan.textContent = formatNumber(cost);
+        }
+        
+        document.getElementById('purchaseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resourceType = document.getElementById('resourceType').value;
+            const amount = parseInt(document.getElementById('amount').value);
+            
+            if (!resourceType || !amount) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/servers/api/purchase-resource', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resource_type: resourceType, amount })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification(`Successfully purchased ${amount} ${resourceType}!`, 'success');
+                    await loadUserData();
+                    await loadPurchaseHistory();
+                    document.getElementById('purchaseForm').reset();
+                    updateCost();
+                } else {
+                    showNotification(data.message || 'Failed to purchase resource', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Purchase error:', error);
+            }
+        });
+        
+        async function loadPurchaseHistory() {
+            try {
+                const response = await fetch('/servers/api/purchase-history');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayPurchaseHistory(data.purchases || []);
+                }
+            } catch (error) {
+                console.error('Error loading purchase history:', error);
+            }
+        }
+        
+        function displayPurchaseHistory(purchases) {
+            const container = document.getElementById('purchaseHistory');
+            
+            if (purchases.length === 0) {
+                container.innerHTML = '<p>You haven\'t made any purchases yet.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 12px;">';
+            purchases.forEach(purchase => {
+                html += `
+                    <div style="padding: 12px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.2); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #f8fafc; font-weight: 600;">${purchase.resource_type.toUpperCase()}</strong> - <span style="color: #cbd5e1;">${purchase.amount} ${getResourceUnit(purchase.resource_type)}</span>
+                            <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">
+                                ${formatDate(purchase.purchased_at)}
+                            </div>
+                        </div>
+                        <div style="color: #dc3545; font-weight: 600;">
+                            -${purchase.coins_spent} coins
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function getResourceUnit(type) {
+            switch(type) {
+                case 'ram': return 'GB';
+                case 'cpu': return '%';
+                case 'storage': return 'GB';
+                default: return '';
+            }
+        }
+        
+        async function loadServerSlotInfo() {
+            try {
+                const userResponse = await fetch('/dashboard/api/user');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    if (userData.success && userData.user) {
+                        const user = userData.user;
+                        const slotPrice = resourcePrices.server_slot_price || 100;
+                        const container = document.getElementById('serverSlotInfo');
+                        
+                        container.innerHTML = `
+                            <div style="display: grid; gap: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: #cbd5e1;">Your Server Slots:</span>
+                                    <strong style="color: #f8fafc;">${user.server_count || 0} / ${user.server_slots || 1} used</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: #cbd5e1;">Available Slots:</span>
+                                    <strong style="color: #4caf50;">${user.available_slots || 0}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(124, 58, 237, 0.3);">
+                                    <span style="color: #cbd5e1;">Price per Slot:</span>
+                                    <strong style="color: #f8fafc;">${formatNumber(slotPrice)} coins</strong>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Update button text
+                        const btn = document.getElementById('purchaseSlotBtn');
+                        btn.textContent = `Purchase Server Slot (${formatNumber(slotPrice)} coins)`;
+                        
+                        // Disable button if not enough coins
+                        const userCoins = user.coins || 0;
+                        if (userCoins < slotPrice) {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.textContent = `Insufficient Coins (Need ${formatNumber(slotPrice)})`;
+                        } else {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading server slot info:', error);
+            }
+        }
+        
+        async function purchaseServerSlot() {
+            const btn = document.getElementById('purchaseSlotBtn');
+            if (btn.disabled) {
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to purchase a server slot?')) {
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            try {
+                const response = await fetch('/servers/api/purchase-slot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Server slot purchased successfully!', 'success');
+                    await loadUserData();
+                    await loadServerSlotInfo();
+                    await loadPurchaseHistory();
+                } else {
+                    showNotification(data.message || 'Failed to purchase server slot', 'error');
+                    await loadServerSlotInfo(); // Reload to update button state
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Purchase slot error:', error);
+                await loadServerSlotInfo(); // Reload to update button state
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+

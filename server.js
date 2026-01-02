@@ -1,0 +1,205 @@
+// Aether Dashboard - Main Server File
+// This is the entry point of our application
+
+// Load environment variables from .env file
+require('dotenv').config();
+
+// Import required modules
+const express = require('express');
+const path = require('path');
+const session = require('express-session');
+const bodyParser = require('body-parser');
+const passport = require('passport');
+const DiscordStrategy = require('passport-discord').Strategy;
+
+// Create Express app
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware setup
+// This allows us to parse form data and JSON
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+// Session configuration
+// Sessions help us remember if a user is logged in
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'aether-dashboard-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+        httpOnly: true, // Prevent XSS access to cookies
+        sameSite: 'strict', // CSRF protection
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Passport session serialization
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const { get } = require('./config/database');
+        const user = await get('SELECT * FROM users WHERE id = ?', [id]);
+        done(null, user);
+    } catch (error) {
+        done(error, null);
+    }
+});
+
+// Discord OAuth Strategy
+if (process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET) {
+    passport.use(new DiscordStrategy({
+        clientID: process.env.DISCORD_CLIENT_ID,
+        clientSecret: process.env.DISCORD_CLIENT_SECRET,
+        callbackURL: process.env.DISCORD_CALLBACK_URL || 'http://localhost:3000/auth/discord/callback',
+        scope: ['identify', 'email']
+    }, async (accessToken, refreshToken, profile, done) => {
+        try {
+            const { get, run } = require('./config/database');
+            
+            // Check if this is a linking operation (user is already logged in)
+            // This will be checked in the callback route using session
+            
+            // Check if user exists with this Discord ID
+            let user = await get('SELECT * FROM users WHERE discord_id = ?', [profile.id]);
+            
+            if (user) {
+                // User exists with this Discord ID, return them
+                return done(null, user);
+            }
+            
+            // Check if user exists with this email (for auto-linking)
+            user = await get('SELECT * FROM users WHERE email = ?', [profile.email]);
+            
+            if (user) {
+                // Link Discord account to existing account by email
+                await run('UPDATE users SET discord_id = ? WHERE id = ?', [profile.id, user.id]);
+                user.discord_id = profile.id;
+                return done(null, user);
+            }
+            
+            // Create new user (only if not linking to existing account)
+            const result = await run(
+                'INSERT INTO users (username, email, discord_id, password, coins) VALUES (?, ?, ?, ?, ?)',
+                [profile.username, profile.email, profile.id, '', 0] // Empty password for Discord users
+            );
+            
+            user = await get('SELECT * FROM users WHERE id = ?', [result.lastID]);
+            
+            // Auto-create Pterodactyl user if configured
+            try {
+                const pterodactyl = require('./config/pterodactyl');
+                const isConfigured = await pterodactyl.isConfigured();
+                if (isConfigured) {
+                    // Check if user already exists in Pterodactyl
+                    const existingUser = await pterodactyl.getPterodactylUserByEmail(profile.email);
+                    
+                    if (!existingUser.success) {
+                        // Create new user in Pterodactyl
+                        const names = profile.username.split(' ');
+                        const firstName = names[0] || profile.username;
+                        const lastName = names.slice(1).join(' ') || 'User';
+                        
+                        // Generate a random password for Pterodactyl (user will need to reset it)
+                        const randomPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+                        
+                        const pterodactylUser = await pterodactyl.createPterodactylUser({
+                            email: profile.email,
+                            username: profile.username,
+                            first_name: firstName,
+                            last_name: lastName,
+                            password: randomPassword
+                        });
+                        
+                        if (pterodactylUser.success && pterodactylUser.data) {
+                            const pterodactylUserId = pterodactylUser.data.id || pterodactylUser.data.attributes?.id;
+                            // Update user with Pterodactyl user ID
+                            await run('UPDATE users SET pterodactyl_user_id = ? WHERE id = ?', 
+                                [pterodactylUserId, user.id]);
+                            user.pterodactyl_user_id = pterodactylUserId;
+                        }
+                    } else {
+                        // User already exists, use existing ID
+                        const pterodactylUserId = existingUser.data.id || existingUser.data.attributes?.id;
+                        await run('UPDATE users SET pterodactyl_user_id = ? WHERE id = ?', 
+                            [pterodactylUserId, user.id]);
+                        user.pterodactyl_user_id = pterodactylUserId;
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating Pterodactyl user for Discord signup:', error);
+                // Don't fail signup if Pterodactyl creation fails
+            }
+            
+            return done(null, user);
+            
+        } catch (error) {
+            return done(error, null);
+        }
+    }));
+} else {
+    console.log('⚠️  Discord OAuth not configured. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET in .env file');
+}
+
+// Serve static files (CSS, JavaScript, images)
+// Files in the 'public' folder can be accessed directly
+app.use(express.static(path.join(__dirname, 'public')));
+
+// We'll serve HTML files directly from the views folder
+// No need for a template engine - we'll use simple HTML files
+
+// Initialize database
+// This will create all tables if they don't exist
+require('./config/database');
+
+// Import routes
+const authRoutes = require('./routes/auth');
+const dashboardRoutes = require('./routes/dashboard');
+const serverRoutes = require('./routes/servers');
+const linkvertiseRoutes = require('./routes/linkvertise');
+const adminRoutes = require('./routes/admin');
+
+// Use routes
+app.use('/auth', authRoutes);
+app.use('/dashboard', dashboardRoutes);
+app.use('/servers', serverRoutes);
+app.use('/linkvertise', linkvertiseRoutes);
+app.use('/admin', adminRoutes);
+
+// Home route - redirect to login if not authenticated, otherwise to dashboard
+app.get('/', (req, res) => {
+    if (req.session.user) {
+        res.redirect('/dashboard');
+    } else {
+        res.redirect('/auth/login');
+    }
+});
+
+// Error handling middleware (should be last)
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ 
+        success: false, 
+        message: 'An internal error occurred' 
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).send('Page not found');
+});
+
+// Start the server
+app.listen(PORT, () => {
+    console.log(`🚀 Aether Dashboard is running on http://localhost:${PORT}`);
+    console.log(`📝 Make sure to set up your .env file with required configuration`);
+});
+

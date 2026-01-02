@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item active" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>User Profile</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="card">
+                    <div class="card-header">Account Information</div>
+                    <div id="profileInfo">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Discord Connection</div>
+                    <div id="discordConnection">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Your Servers</div>
+                    <div id="userServers">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        // Load profile data
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfileData();
+            checkAdminAccess();
+            
+            // Check for Discord linking success/error messages
+            const urlParams = new URLSearchParams(window.location.search);
+            const discordStatus = urlParams.get('discord');
+            
+            if (discordStatus === 'linked') {
+                showNotification('Discord account connected successfully!', 'success');
+                // Remove query parameter from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                // Reload profile data to show updated Discord status
+                setTimeout(() => {
+                    loadProfileData();
+                }, 500);
+            } else if (discordStatus === 'error') {
+                const message = urlParams.get('message');
+                if (message === 'already_linked') {
+                    showNotification('This Discord account is already linked to another account', 'error');
+                } else {
+                    showNotification('Failed to connect Discord account', 'error');
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
+        
+        async function loadProfileData() {
+            try {
+                // Load user info
+                const userResponse = await fetch('/dashboard/api/user');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    if (userData.user) {
+                        const user = userData.user;
+                        document.getElementById('coinAmount').textContent = formatNumber(user.coins || 0);
+                        
+                        document.getElementById('profileInfo').innerHTML = `
+                            <div style="display: grid; gap: 16px;">
+                                <div style="color: #f8fafc;">
+                                    <strong style="color: #cbd5e1;">Username:</strong> <span style="color: #f8fafc;">${escapeHtml(user.username)}</span>
+                                </div>
+                                <div style="color: #f8fafc;">
+                                    <strong style="color: #cbd5e1;">Email:</strong> <span style="color: #f8fafc;">${escapeHtml(user.email)}</span>
+                                </div>
+                                <div style="color: #f8fafc;">
+                                    <strong style="color: #cbd5e1;">Coins:</strong> <span style="color: #f8fafc;">${formatNumber(user.coins || 0)}</span>
+                                </div>
+                                <div style="color: #f8fafc;">
+                                    <strong style="color: #cbd5e1;">Account Type:</strong> <span style="color: #f8fafc;">${user.is_admin ? 'Administrator' : 'User'}</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Load Discord connection status
+                        loadDiscordConnection(user);
+                    }
+                }
+                
+                // Load user's servers
+                const serversResponse = await fetch('/servers/api/list');
+                if (serversResponse.ok) {
+                    const serversData = await serversResponse.json();
+                    const servers = serversData.servers || [];
+                    
+                    if (servers.length === 0) {
+                        document.getElementById('userServers').innerHTML = '<p>You don\'t have any servers yet. <a href="/servers/create">Create one now!</a></p>';
+                    } else {
+                        let serversHTML = '<div style="display: grid; gap: 12px;">';
+                        servers.forEach(server => {
+                            serversHTML += `
+                                <div style="padding: 16px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                                    <strong style="color: #f8fafc; font-weight: 600;">${escapeHtml(server.name)}</strong><br>
+                                    <small>RAM: ${formatNumber(server.ram)}MB | CPU: ${server.cpu}% | Storage: ${formatNumber(server.storage)}MB</small>
+                                </div>
+                            `;
+                        });
+                        serversHTML += '</div>';
+                        document.getElementById('userServers').innerHTML = serversHTML;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading profile data:', error);
+            }
+        }
+        
+        async function loadDiscordConnection(user) {
+            const container = document.getElementById('discordConnection');
+            
+            if (user.discord_id) {
+                // Discord is connected
+                try {
+                    // Try to get Discord username from API
+                    const response = await fetch('/dashboard/api/discord-info');
+                    const data = await response.json();
+                    
+                    container.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(88, 101, 242, 0.3); border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #5865F2 0%, #7289da 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div style="color: #f8fafc; font-weight: 600; font-size: 16px;">Discord Connected</div>
+                                    <div style="color: #cbd5e1; font-size: 14px; margin-top: 4px;">
+                                        ${data.discord_username ? `Connected as ${data.discord_username}` : `Discord ID: ${user.discord_id}`}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                <span>✓</span> Connected
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    container.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(88, 101, 242, 0.3); border-radius: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #5865F2 0%, #7289da 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div style="color: #f8fafc; font-weight: 600; font-size: 16px;">Discord Connected</div>
+                                    <div style="color: #cbd5e1; font-size: 14px; margin-top: 4px;">
+                                        Discord ID: ${user.discord_id}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="color: #10b981; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                                <span>✓</span> Connected
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                // Discord not connected
+                container.innerHTML = `
+                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                            <div>
+                                <div style="color: #f8fafc; font-weight: 600; font-size: 16px; margin-bottom: 4px;">Connect Your Discord Account</div>
+                                <div style="color: #cbd5e1; font-size: 14px;">
+                                    Link your Discord account to enable Discord login and enhance your experience.
+                                </div>
+                            </div>
+                        </div>
+                        <a href="/auth/discord/link" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                            </svg>
+                            Connect Discord
+                        </a>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
+

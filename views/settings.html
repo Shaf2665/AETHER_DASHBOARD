@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item active" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>Settings</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="card">
+                    <div class="card-header">Change Password</div>
+                    <form id="changePasswordForm">
+                        <div class="form-group">
+                            <label for="currentPassword">Current Password</label>
+                            <input type="password" id="currentPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" required minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmNewPassword">Confirm New Password</label>
+                            <input type="password" id="confirmNewPassword" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Password</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Account Information</div>
+                    <form id="updateEmailForm">
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Email</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            checkAdminAccess();
+            
+            // Load current email
+            const userResponse = await fetch('/dashboard/api/user');
+            if (userResponse.ok) {
+                const data = await userResponse.json();
+                if (data.user) {
+                    document.getElementById('email').value = data.user.email;
+                }
+            }
+        });
+        
+        // Change password form
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+            
+            if (newPassword !== confirmNewPassword) {
+                showNotification('New passwords do not match', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/dashboard/api/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Password updated successfully', 'success');
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    showNotification(data.message || 'Failed to update password', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        });
+        
+        // Update email form
+        document.getElementById('updateEmailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            
+            try {
+                const response = await fetch('/dashboard/api/update-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Email updated successfully', 'success');
+                } else {
+                    showNotification(data.message || 'Failed to update email', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+

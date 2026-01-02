@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linkvertise - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item active" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1>Earn Coins</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="card">
+                    <div class="card-header">Complete Links to Earn Coins</div>
+                    <p style="margin-bottom: 20px; color: #cbd5e1;">
+                        Complete the links below to earn coins. Each completed link will reward you with coins that you can use to purchase server resources!
+                    </p>
+                    
+                    <div id="linksContainer">
+                        <p>Loading available links...</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Your Link Completion History</div>
+                    <div id="completionHistory">
+                        <p>Loading history...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadLinks();
+            await loadCompletionHistory();
+            checkAdminAccess();
+        });
+        
+        async function loadLinks() {
+            try {
+                const response = await fetch('/linkvertise/api/links');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Links API Response:', data); // Debug: Check what we're receiving
+                    console.log('Links with cooldown:', data.links?.filter(l => l.on_cooldown)); // Debug: Check cooldown status
+                    displayLinks(data.links || []);
+                }
+            } catch (error) {
+                console.error('Error loading links:', error);
+                document.getElementById('linksContainer').innerHTML = '<p>Error loading links</p>';
+            }
+        }
+        
+        let cooldownTimers = {};
+        
+        function displayLinks(links) {
+            const container = document.getElementById('linksContainer');
+            
+            if (links.length === 0) {
+                container.innerHTML = '<p>No links available at the moment. Check back later!</p>';
+                return;
+            }
+            
+            console.log('Displaying links:', links); // Debug: See all link data
+            
+            let html = '<div style="display: grid; gap: 16px;">';
+            const linksOnCooldown = []; // Store links that need timers
+            
+            links.forEach(link => {
+                const isOnCooldown = link.on_cooldown === true; // Use strict equality
+                const cooldownRemaining = parseInt(link.cooldown_remaining) || 0;
+                const hasCompletedBefore = link.completed || false;
+                
+                console.log(`Link ${link.id}: on_cooldown=${isOnCooldown}, remaining=${cooldownRemaining}, completed=${link.completed}`); // Debug
+                
+                const escapedUrl = escapeHtml(link.url);
+                const escapedTitle = escapeHtml(link.title || 'Link #' + link.id);
+                html += `
+                    <div style="padding: 20px; background: ${isOnCooldown ? 'rgba(50, 30, 30, 0.6)' : 'rgba(30, 30, 50, 0.6)'}; backdrop-filter: blur(20px); border: 1px solid ${isOnCooldown ? 'rgba(255, 152, 0, 0.3)' : 'rgba(124, 58, 237, 0.3)'}; border-radius: 12px; border-left: 4px solid ${isOnCooldown ? '#ff9800' : '#7c3aed'}; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <h3 style="margin: 0 0 8px 0; color: #f8fafc; font-weight: 600;">${escapedTitle}</h3>
+                                <p style="margin: 0; color: #cbd5e1; font-size: 14px;">
+                                    Reward: <strong>${link.coins_earned || 10} coins</strong>
+                                </p>
+                                ${hasCompletedBefore && !isOnCooldown ? '<p style="margin: 8px 0 0 0; color: #94a3b8; font-size: 14px;">You can complete this link again</p>' : ''}
+                                ${isOnCooldown ? `<p style="margin: 8px 0 0 0; color: #ff9800; font-size: 14px; font-weight: 600;" id="cooldown-${link.id}">⏱️ Available in <strong>${cooldownRemaining}</strong> second${cooldownRemaining !== 1 ? 's' : ''}</p>` : ''}
+                            </div>
+                            <div>
+                                ${!isOnCooldown ? `
+                                    <a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary complete-link-btn" data-link-id="${link.id}" data-link-url="${escapeHtml(link.url)}">
+                                        Complete Link
+                                    </a>
+                                ` : `
+                                    <button class="btn btn-secondary" disabled id="btn-${link.id}">On Cooldown</button>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Store link info for timer initialization AFTER DOM is updated
+                if (isOnCooldown && cooldownRemaining > 0) {
+                    linksOnCooldown.push({
+                        id: link.id,
+                        remaining: cooldownRemaining,
+                        cooldownSeconds: parseInt(link.cooldown_seconds) || 30
+                    });
+                }
+            });
+            html += '</div>';
+            container.innerHTML = html;
+            
+            // Attach event listeners to complete link buttons
+            container.querySelectorAll('.complete-link-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const linkId = btn.getAttribute('data-link-id');
+                    const linkUrl = btn.getAttribute('data-link-url');
+                    completeLink(linkId, linkUrl);
+                });
+            });
+            
+            console.log('Links on cooldown:', linksOnCooldown); // Debug
+            
+            // Now start timers AFTER DOM elements exist
+            if (linksOnCooldown.length > 0) {
+                linksOnCooldown.forEach(linkInfo => {
+                    console.log(`Starting timer for link ${linkInfo.id} with ${linkInfo.remaining} seconds remaining`); // Debug
+                    startCooldownTimer(linkInfo.id, linkInfo.remaining, linkInfo.cooldownSeconds);
+                });
+            } else {
+                console.log('No links on cooldown - timers not started'); // Debug
+            }
+        }
+        
+        function startCooldownTimer(linkId, remainingSeconds, cooldownSeconds) {
+            console.log(`startCooldownTimer called: linkId=${linkId}, remaining=${remainingSeconds}, cooldown=${cooldownSeconds}`); // Debug
+            
+            // Clear existing timer if any
+            if (cooldownTimers[linkId]) {
+                clearInterval(cooldownTimers[linkId]);
+            }
+            
+            let remaining = remainingSeconds;
+            const cooldownElement = document.getElementById(`cooldown-${linkId}`);
+            const buttonElement = document.getElementById(`btn-${linkId}`);
+            
+            console.log(`Timer elements found: cooldownElement=${!!cooldownElement}, buttonElement=${!!buttonElement}`); // Debug
+            
+            if (!cooldownElement) {
+                console.error(`Cooldown element not found for link ${linkId}!`); // Debug
+                return;
+            }
+            
+            cooldownTimers[linkId] = setInterval(() => {
+                remaining--;
+                console.log(`Timer tick for link ${linkId}: ${remaining} seconds remaining`); // Debug
+                
+                if (cooldownElement) {
+                    if (remaining > 0) {
+                        cooldownElement.innerHTML = `⏱️ Available in <strong>${remaining}</strong> second${remaining !== 1 ? 's' : ''}`;
+                    } else {
+                        cooldownElement.innerHTML = '';
+                        console.log(`Cooldown expired for link ${linkId}, reloading links...`); // Debug
+                        // Reload links to update status
+                        loadLinks();
+                    }
+                }
+                
+                if (remaining <= 0) {
+                    clearInterval(cooldownTimers[linkId]);
+                    delete cooldownTimers[linkId];
+                    console.log(`Timer cleared for link ${linkId}`); // Debug
+                }
+            }, 1000);
+        }
+        
+        async function completeLink(linkId, linkUrl) {
+            // Open link in new tab
+            window.open(linkUrl, '_blank');
+            
+            // Wait a bit, then mark as complete
+            // In a real implementation, you'd verify the link was actually completed
+            // For simplicity, we'll just mark it after a delay
+            setTimeout(async () => {
+                try {
+                    const response = await fetch('/linkvertise/api/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ link_id: linkId })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Error response:', errorText);
+                        showNotification('Failed to complete link. Please try again.', 'error');
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        showNotification(`You earned ${data.coins_earned} coins!`, 'success');
+                        await loadLinks();
+                        await loadUserData();
+                        await loadCompletionHistory();
+                    } else {
+                        showNotification(data.message || 'Failed to complete link', 'error');
+                        // If cooldown error, reload links to show updated cooldown
+                        if (data.cooldown_remaining !== undefined) {
+                            await loadLinks();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error completing link:', error);
+                    showNotification('An error occurred. Please try again.', 'error');
+                }
+            }, 2000);
+        }
+        
+        async function loadCompletionHistory() {
+            try {
+                const response = await fetch('/linkvertise/api/history');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayHistory(data.completions || []);
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+        
+        function displayHistory(completions) {
+            const container = document.getElementById('completionHistory');
+            
+            if (completions.length === 0) {
+                container.innerHTML = '<p>You haven\'t completed any links yet.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; gap: 12px;">';
+            completions.forEach(completion => {
+                html += `
+                    <div style="padding: 12px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.2); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #f8fafc; font-weight: 600;">${completion.link_title || 'Link #' + completion.link_id}</strong>
+                            <div style="color: #cbd5e1; font-size: 12px; margin-top: 4px;">
+                                ${formatDate(completion.completed_at)}
+                            </div>
+                        </div>
+                        <div style="color: #4caf50; font-weight: 600;">
+                            +${completion.coins_earned} coins
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+

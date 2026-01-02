@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servers - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item active" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h1 id="pageTitle">Manage Servers</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <!-- Create Server Form (hidden by default) -->
+                <div id="createServerSection" style="display: none;">
+                    <!-- Resource Display -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header">Your Resources</div>
+                        <div id="resourceDisplay" style="padding: 20px;">
+                            <p style="color: #cbd5e1;">Loading resources...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">Create New Server</div>
+                        <form id="createServerForm">
+                            <div class="form-group">
+                                <label for="serverName">Server Name</label>
+                                <input type="text" id="serverName" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="serverEgg">Game Type (Egg)</label>
+                                <select id="serverEgg" required>
+                                    <option value="">Loading eggs...</option>
+                                </select>
+                                <small style="color: #cbd5e1;">Select the game type for your server</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="serverRam">RAM (GB)</label>
+                                <input type="number" id="serverRam" min="1" step="1" value="1" required>
+                                <small style="color: #cbd5e1;">Minimum: 1GB</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="serverCpu">CPU Limit (%)</label>
+                                <input type="number" id="serverCpu" min="100" max="100" value="100" required>
+                                <small style="color: #cbd5e1;">Fixed at 100%</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="serverStorage">Storage (GB)</label>
+                                <input type="number" id="serverStorage" min="5" step="1" value="5" required>
+                                <small style="color: #cbd5e1;">Minimum: 5GB</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Create Server</button>
+                            <button type="button" class="btn btn-secondary" onclick="showServerList()">Cancel</button>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Server List -->
+                <div id="serverListSection">
+                    <div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <div class="card-header" style="margin: 0;">Your Servers</div>
+                                <div id="serverSlotDisplay" style="margin-top: 8px; color: #cbd5e1; font-size: 14px;">
+                                    Loading slot information...
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="showCreateServer()">Create Server</button>
+                        </div>
+                        <div id="serversList">
+                            <p>Loading servers...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        // Check if we're on create server page
+        if (window.location.pathname === '/servers/create') {
+            showCreateServer();
+        }
+        
+        // Load servers and user data
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserData();
+            await loadServers();
+            await loadServerSlotInfo();
+            checkAdminAccess();
+        });
+        
+        async function loadServerSlotInfo() {
+            try {
+                const userResponse = await fetch('/dashboard/api/user');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    if (userData.success && userData.user) {
+                        const user = userData.user;
+                        const container = document.getElementById('serverSlotDisplay');
+                        const usedSlots = user.server_count || 0;
+                        const totalSlots = user.server_slots || 1;
+                        const availableSlots = user.available_slots || 0;
+                        
+                        container.innerHTML = `
+                            <span style="color: #cbd5e1;">Server Slots: </span>
+                            <strong style="color: ${availableSlots > 0 ? '#4caf50' : '#ff9800'};">${usedSlots} / ${totalSlots} used</strong>
+                            ${availableSlots > 0 ? `<span style="color: #94a3b8;">(${availableSlots} available)</span>` : '<span style="color: #ff9800;">(No slots available - <a href="/servers/store" style="color: #7c3aed; text-decoration: underline;">Purchase more</a>)</span>'}
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading server slot info:', error);
+            }
+        }
+        
+        function showCreateServer() {
+            document.getElementById('createServerSection').style.display = 'block';
+            document.getElementById('serverListSection').style.display = 'none';
+            document.getElementById('pageTitle').textContent = 'Create Server';
+            loadResourceDisplay();
+            loadEggs();
+        }
+        
+        async function loadResourceDisplay() {
+            try {
+                const response = await fetch('/servers/api/purchased-resources');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        displayResources(data);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading resources:', error);
+            }
+        }
+        
+        function displayResources(data) {
+            const container = document.getElementById('resourceDisplay');
+            const purchased = data.purchased;
+            const used = data.used;
+            const available = data.available;
+            
+            // Convert MB to GB for RAM and Storage
+            const purchasedRamGB = Math.round(purchased.ram / 1024);
+            const usedRamGB = Math.round(used.ram / 1024);
+            const availableRamGB = Math.round(available.ram / 1024);
+            
+            const purchasedStorageGB = Math.round(purchased.storage / 1024);
+            const usedStorageGB = Math.round(used.storage / 1024);
+            const availableStorageGB = Math.round(available.storage / 1024);
+            
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                        <h4 style="color: #f8fafc; margin: 0 0 12px 0;">RAM</h4>
+                        <div style="color: #cbd5e1; font-size: 14px;">
+                            <div>Purchased: <strong style="color: #7c3aed;">${purchasedRamGB}GB</strong></div>
+                            <div>Used: <strong style="color: #ff9800;">${usedRamGB}GB</strong></div>
+                            <div>Available: <strong style="color: ${availableRamGB > 0 ? '#4caf50' : '#ff5722'};">${availableRamGB}GB</strong></div>
+                        </div>
+                    </div>
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                        <h4 style="color: #f8fafc; margin: 0 0 12px 0;">CPU</h4>
+                        <div style="color: #cbd5e1; font-size: 14px;">
+                            <div>Purchased: <strong style="color: #7c3aed;">${purchased.cpu}%</strong></div>
+                            <div>Used: <strong style="color: #ff9800;">${used.cpu}%</strong></div>
+                            <div>Available: <strong style="color: ${available.cpu > 0 ? '#4caf50' : '#ff5722'};">${available.cpu}%</strong></div>
+                        </div>
+                    </div>
+                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px;">
+                        <h4 style="color: #f8fafc; margin: 0 0 12px 0;">Storage</h4>
+                        <div style="color: #cbd5e1; font-size: 14px;">
+                            <div>Purchased: <strong style="color: #7c3aed;">${purchasedStorageGB}GB</strong></div>
+                            <div>Used: <strong style="color: #ff9800;">${usedStorageGB}GB</strong></div>
+                            <div>Available: <strong style="color: ${availableStorageGB > 0 ? '#4caf50' : '#ff5722'};">${availableStorageGB}GB</strong></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function loadEggs() {
+            try {
+                const response = await fetch('/servers/api/eggs');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.eggs) {
+                        const select = document.getElementById('serverEgg');
+                        select.innerHTML = '<option value="">Select a game type...</option>';
+                        data.eggs.forEach(egg => {
+                            const option = document.createElement('option');
+                            option.value = egg.egg_id;
+                            option.textContent = egg.name;
+                            option.dataset.nestId = egg.nest_id;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        document.getElementById('serverEgg').innerHTML = '<option value="">No eggs available. Please contact an administrator.</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading eggs:', error);
+                document.getElementById('serverEgg').innerHTML = '<option value="">Error loading eggs</option>';
+            }
+        }
+        
+        function showServerList() {
+            document.getElementById('createServerSection').style.display = 'none';
+            document.getElementById('serverListSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'Manage Servers';
+        }
+        
+        async function loadServers() {
+            try {
+                const response = await fetch('/servers/api/list');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayServers(data.servers || []);
+                } else {
+                    document.getElementById('serversList').innerHTML = '<p>Error loading servers</p>';
+                }
+            } catch (error) {
+                console.error('Error loading servers:', error);
+                document.getElementById('serversList').innerHTML = '<p>Error loading servers</p>';
+            }
+        }
+        
+        // Cache panel URL
+        let cachedPanelUrl = null;
+        async function loadPanelUrl() {
+            if (cachedPanelUrl) return cachedPanelUrl;
+            try {
+                const response = await fetch('/servers/api/panel-url');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.panel_url) {
+                        cachedPanelUrl = data.panel_url;
+                        return cachedPanelUrl;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading panel URL:', error);
+            }
+            return null;
+        }
+        
+        async function displayServers(servers) {
+            const container = document.getElementById('serversList');
+            
+            if (servers.length === 0) {
+                container.innerHTML = '<p>You don\'t have any servers yet. <button class="btn btn-primary" onclick="showCreateServer()">Create one now!</button></p>';
+                return;
+            }
+            
+            // Load panel URL
+            const panelUrl = await loadPanelUrl();
+            
+            let html = '<div style="display: grid; gap: 16px;">';
+            servers.forEach(server => {
+                const hasPterodactylId = server.pterodactyl_id;
+                html += `
+                    <div style="padding: 20px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; border-left: 4px solid #7c3aed; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <!-- 
+                                    DEPRECATED: Do not use server_ip, server_ip_alias, or server_port
+                                    Use server.public_address instead (format: alias:port or ip:port)
+                                -->
+                                <h3 style="margin: 0 0 8px 0; color: #f8fafc; font-weight: 600;">${escapeHtml(server.name)}</h3>
+                                ${server.public_address ? 
+                                    `<p style="margin: 0 0 8px 0; color: #94a3b8; font-size: 16px; font-weight: 500;">
+                                        🌐 Server Address: ${escapeHtml(server.public_address)}
+                                    </p>` : 
+                                    ''
+                                }
+                                <div style="color: #cbd5e1; font-size: 14px; margin-bottom: 12px;">
+                                    <div>RAM: ${Math.round(server.ram / 1024)}GB</div>
+                                    <div>CPU: ${server.cpu}%</div>
+                                    <div>Storage: ${Math.round(server.storage / 1024)}GB</div>
+                                </div>
+                                <div id="stats-${server.id}" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    ${hasPterodactylId && panelUrl ? 
+                                        `<a href="${escapeHtml(panelUrl)}/server/${server.pterodactyl_id}" target="_blank" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px; text-decoration: none; display: inline-block;">
+                                            Open in Panel
+                                        </a>` :
+                                        `<button class="btn btn-secondary" onclick="loadServerStats(${server.id})" style="font-size: 12px; padding: 6px 12px;">
+                                            View Statistics
+                                        </button>`
+                                    }
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-danger" onclick="deleteServer(${server.id})">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // Create server form handler
+        document.getElementById('createServerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get form values
+            const serverName = document.getElementById('serverName').value.trim();
+            const eggId = document.getElementById('serverEgg').value;
+            const ramGB = parseFloat(document.getElementById('serverRam').value);
+            const cpuPercent = parseInt(document.getElementById('serverCpu').value);
+            const storageGB = parseFloat(document.getElementById('serverStorage').value);
+            
+            // Validate minimums
+            if (ramGB < 1) {
+                showNotification('RAM must be at least 1GB', 'error');
+                return;
+            }
+            if (cpuPercent < 100) {
+                showNotification('CPU must be 100%', 'error');
+                return;
+            }
+            if (storageGB < 5) {
+                showNotification('Storage must be at least 5GB', 'error');
+                return;
+            }
+            if (!eggId) {
+                showNotification('Please select a game type', 'error');
+                return;
+            }
+            
+            // Check available resources
+            try {
+                const resourcesResponse = await fetch('/servers/api/purchased-resources');
+                if (resourcesResponse.ok) {
+                    const resourcesData = await resourcesResponse.json();
+                    if (resourcesData.success) {
+                        const available = resourcesData.available;
+                        const ramMB = ramGB * 1024;
+                        const storageMB = storageGB * 1024;
+                        
+                        if (available.ram < ramMB) {
+                            showNotification(`Insufficient RAM. You have ${Math.round(available.ram / 1024)}GB available but need ${ramGB}GB.`, 'error');
+                            return;
+                        }
+                        if (available.cpu < cpuPercent) {
+                            showNotification(`Insufficient CPU. You have ${available.cpu}% available but need ${cpuPercent}%.`, 'error');
+                            return;
+                        }
+                        if (available.storage < storageMB) {
+                            showNotification(`Insufficient Storage. You have ${Math.round(available.storage / 1024)}GB available but need ${storageGB}GB.`, 'error');
+                            return;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking resources:', error);
+                showNotification('Error checking available resources', 'error');
+                return;
+            }
+            
+            const serverData = {
+                name: serverName,
+                egg_id: parseInt(eggId),
+                ram: Math.round(ramGB * 1024), // Convert GB to MB
+                cpu: cpuPercent,
+                storage: Math.round(storageGB * 1024) // Convert GB to MB
+            };
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creating...';
+            
+            try {
+                const response = await fetch('/servers/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(serverData)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Server created successfully!', 'success');
+                    showServerList();
+                    await loadServers();
+                    await loadServerSlotInfo(); // Refresh slot count
+                    await loadResourceDisplay(); // Refresh resource display
+                } else {
+                    showNotification(data.message || 'Failed to create server', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Create server error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+        
+        async function deleteServer(serverId) {
+            if (!confirm('Are you sure you want to delete this server?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/servers/api/delete/${serverId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Server deleted successfully', 'success');
+                    await loadServers();
+                    await loadServerSlotInfo(); // Refresh slot count after deletion
+                } else {
+                    showNotification(data.message || 'Failed to delete server', 'error');
+                }
+            } catch (error) {
+                showNotification('An error occurred', 'error');
+                console.error('Delete server error:', error);
+            }
+        }
+        
+        async function loadServerStats(serverId) {
+            const statsContainer = document.getElementById(`stats-${serverId}`);
+            statsContainer.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const response = await fetch(`/servers/api/stats/${serverId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    const server = data.server;
+                    
+                    let html = '<div style="margin-top: 12px; padding: 12px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 8px;">';
+                    html += '<strong style="display: block; margin-bottom: 8px; color: #f8fafc; font-weight: 600;">Server Statistics</strong>';
+                    
+                    if (stats && stats.attributes) {
+                        const attrs = stats.attributes;
+                        html += `
+                            <div style="font-size: 12px; color: #cbd5e1;">
+                                <div style="margin-bottom: 4px;">
+                                    <strong style="color: #f8fafc;">CPU Usage:</strong> 
+                                    <div style="background: rgba(10, 14, 39, 0.5); border-radius: 6px; height: 20px; margin-top: 4px; position: relative; overflow: hidden;">
+                                        <div style="background: linear-gradient(90deg, #7c3aed, #a855f7); height: 100%; width: ${Math.min((attrs.cpu_absolute || 0), 100)}%; border-radius: 6px; box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);"></div>
+                                        <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; color: #f8fafc; font-weight: 600;">
+                                            ${(attrs.cpu_absolute || 0).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 4px;">
+                                    <strong>RAM Usage:</strong> ${Math.round(attrs.memory_bytes / 1024 / 1024 / 1024)}GB / ${Math.round(server.ram / 1024)}GB
+                                    <div style="background: #e0e0e0; border-radius: 4px; height: 20px; margin-top: 4px; position: relative;">
+                                        <div style="background: #4caf50; height: 100%; width: ${Math.min((attrs.memory_bytes / 1024 / 1024 / server.ram * 100), 100)}%; border-radius: 4px;"></div>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom: 4px;">
+                                    <strong>Disk Usage:</strong> ${Math.round(attrs.disk_bytes / 1024 / 1024 / 1024)}GB / ${Math.round(server.storage / 1024)}GB
+                                    <div style="background: #e0e0e0; border-radius: 4px; height: 20px; margin-top: 4px; position: relative;">
+                                        <div style="background: #ff9800; height: 100%; width: ${Math.min((attrs.disk_bytes / 1024 / 1024 / server.storage * 100), 100)}%; border-radius: 4px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // Show Panel button if server has pterodactyl_id
+                        const panelUrl = await loadPanelUrl();
+                        if (server.pterodactyl_id && panelUrl) {
+                            html += `
+                                <p style="color: #cbd5e1; font-size: 12px; margin-bottom: 8px;">View and manage your server in the Pterodactyl panel.</p>
+                                <a href="${panelUrl}/server/${server.pterodactyl_id}" target="_blank" class="btn btn-primary" style="font-size: 12px; padding: 6px 12px; text-decoration: none; display: inline-block;">
+                                    Open in Panel
+                                </a>
+                                <div style="font-size: 12px; color: #cbd5e1; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(124, 58, 237, 0.3);">
+                                    <div>Allocated RAM: ${Math.round(server.ram / 1024)}GB</div>
+                                    <div>CPU Limit: ${server.cpu}%</div>
+                                    <div>Storage: ${Math.round(server.storage / 1024)}GB</div>
+                                </div>
+                            `;
+                        } else {
+                            html += '<p style="color: #cbd5e1; font-size: 12px;">Real-time statistics not available. Pterodactyl integration may not be configured.</p>';
+                            html += `<div style="font-size: 12px; color: #cbd5e1; margin-top: 8px;">
+                                <div>Allocated RAM: ${Math.round(server.ram / 1024)}GB</div>
+                                <div>CPU Limit: ${server.cpu}%</div>
+                                <div>Storage: ${Math.round(server.storage / 1024)}GB</div>
+                            </div>`;
+                        }
+                    }
+                    
+                    html += '</div>';
+                    statsContainer.innerHTML = html;
+                } else {
+                    statsContainer.innerHTML = '<p style="color: #dc3545; font-size: 12px;">Error loading statistics</p>';
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                statsContainer.innerHTML = '<p style="color: #dc3545; font-size: 12px;">Error loading statistics</p>';
+            }
+        }
+    </script>
+</body>
+</html>
+
