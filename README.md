@@ -4,7 +4,7 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 
 **Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
-**Version:** 1.0.3  
+**Version:** 1.0.4  
 **Status:** Production Ready ✅
 
 ---
@@ -568,6 +568,8 @@ If you have a domain, set up Nginx (see the "Production Setup" section below).
 4. Enter new password
 5. Save
 
+**💡 Forgot your password?** See the "Troubleshooting" section below for instructions on how to reset it without losing data!
+
 ---
 
 ## 💰 Setting Up Revenue Generation (Linkvertise)
@@ -1046,9 +1048,68 @@ Before going live, make sure you've completed:
 - ✅ Cooldown timer has expired (if applicable)
 - ✅ Check server logs: `pm2 logs aether-dashboard`
 
-### "Admin password doesn't work"
+### "I forgot my admin password"
 
-**Solution:**
+**Don't worry!** You can reset your admin password without losing any data.
+
+**Easy Solution (Recommended):**
+
+1. **Connect to your VPS via SSH** (same way you installed the dashboard)
+
+2. **Go to your dashboard folder:**
+   ```bash
+   cd AETHER_PANEL
+   ```
+
+3. **Run the password reset script:**
+   ```bash
+   node reset-admin-password.js "your-new-password-here"
+   ```
+   
+   **Replace `your-new-password-here` with your desired password**
+   
+   **Example:**
+   ```bash
+   node reset-admin-password.js "mypassword123"
+   ```
+
+4. **You'll see a success message:**
+   ```
+   ✅ Admin password reset successfully!
+   
+   📝 Login Details:
+      Username: admin
+      Password: mypassword123
+   ```
+
+5. **Restart the dashboard (if it's running):**
+   ```bash
+   pm2 restart aether-dashboard
+   ```
+
+6. **Log in with your new password:**
+   - Username: `admin`
+   - Password: (the password you just set)
+
+**✅ What this does:**
+- Resets ONLY the admin password
+- Keeps ALL your data (users, servers, settings, etc.)
+- Safe and easy to use
+
+**❌ What this does NOT do:**
+- Does NOT delete any data
+- Does NOT affect other users
+- Does NOT change any settings
+
+**⚠️ Important Notes:**
+- Make sure to remember your new password!
+- Save it in a safe place
+- The password must be at least 6 characters long
+
+**Alternative Method (Only if script doesn't work):**
+
+If the script doesn't work for some reason, you can delete the database file (⚠️ **WARNING: This deletes ALL data!**):
+
 1. **Delete the database file:**
    ```bash
    cd AETHER_PANEL
@@ -1064,7 +1125,9 @@ Before going live, make sure you've completed:
    - Username: `admin`
    - Password: `admin123`
 
-4. **Change the password immediately!**
+4. **⚠️ You'll lose ALL your data** (users, servers, settings, etc.)
+
+**We recommend using the password reset script instead!**
 
 ---
 
@@ -1096,6 +1159,7 @@ pm2 start server.js --name aether-dashboard  # Start
 ### Important Files
 - **`.env`** - Your configuration (keep secret!)
 - **`database.db`** - All your data (backup regularly!)
+- **`reset-admin-password.js`** - Password reset script (use if you forget admin password)
 
 ---
 
@@ -1127,4 +1191,4 @@ MIT License - Feel free to use, modify, and distribute!
 
 **Made with ❤️ for free hosting providers. Start earning revenue today!** 🚀💰
 
-**Version 1.0.3** - Production Ready ✅
+**Version 1.0.4** - Production Ready ✅
