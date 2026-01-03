@@ -7,6 +7,8 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 **Version:** 1.0.4  
 **Status:** Production Ready ✅
 
+**📦 Want to update?** See the [Update Guide](UPDATES.md) for instructions on how to update to the latest version!
+
 ---
 
 ## 🎯 What is This?
@@ -1131,12 +1133,35 @@ If the script doesn't work for some reason, you can delete the database file (�
 
 ---
 
+## 📦 Updating the Dashboard
+
+**Want to update to the latest version?** 
+
+👉 **[See the Update Guide (UPDATES.md)](UPDATES.md)** for:
+- Step-by-step update instructions
+- Update checklist
+- Version changelog
+- Troubleshooting update issues
+
+**Quick Update (if installed via GitHub):**
+```bash
+cd AETHER_PANEL
+git pull origin main
+npm install
+pm2 restart aether-dashboard
+```
+
+**⚠️ Always backup your `database.db` and `.env` files before updating!**
+
+---
+
 ## 📖 Need More Help?
 
 1. **Check this README** - Most questions are answered here
-2. **Check server logs** - `pm2 logs aether-dashboard`
-3. **Check error messages** - They usually tell you what's wrong
-4. **Review the troubleshooting section** - Common issues and solutions are listed above
+2. **Check the Update Guide** - [UPDATES.md](UPDATES.md) for update instructions
+3. **Check server logs** - `pm2 logs aether-dashboard`
+4. **Check error messages** - They usually tell you what's wrong
+5. **Review the troubleshooting section** - Common issues and solutions are listed above
 
 ---
 
