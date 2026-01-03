@@ -55,10 +55,14 @@
             </div>
         </aside>
         
+        <!-- Sidebar Overlay (for mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
         <!-- Main Content -->
         <main class="main-content">
             <header class="dashboard-header">
                 <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">☰</button>
                     <h1>User Profile</h1>
                 </div>
                 <div class="header-right">
@@ -99,6 +103,7 @@
     <script>
         // Load profile data
         document.addEventListener('DOMContentLoaded', async () => {
+            initMobileMenu();
             await loadProfileData();
             checkAdminAccess();
             

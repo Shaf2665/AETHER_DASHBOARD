@@ -4,7 +4,7 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 
 **Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
-**Version:** 1.0.0  
+**Version:** 1.0.3  
 **Status:** Production Ready ✅
 
 ---
@@ -1127,4 +1127,4 @@ MIT License - Feel free to use, modify, and distribute!
 
 **Made with ❤️ for free hosting providers. Start earning revenue today!** 🚀💰
 
-**Version 1.0.0** - Production Ready ✅
+**Version 1.0.3** - Production Ready ✅

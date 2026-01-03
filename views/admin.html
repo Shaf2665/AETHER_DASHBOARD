@@ -55,10 +55,14 @@
             </div>
         </aside>
         
+        <!-- Sidebar Overlay (for mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
         <!-- Main Content -->
         <main class="main-content">
             <header class="dashboard-header">
                 <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">☰</button>
                     <h1>Admin Panel</h1>
                 </div>
                 <div class="header-right">
@@ -99,13 +103,15 @@
                 
                 <!-- Tabs -->
                 <div class="card">
-                    <div style="display: flex; gap: 16px; border-bottom: 2px solid rgba(124, 58, 237, 0.3); margin-bottom: 20px;">
-                        <button class="tab-btn active" onclick="showTab('users')">Users</button>
-                        <button class="tab-btn" onclick="showTab('servers')">Servers</button>
-                        <button class="tab-btn" onclick="showTab('coins')">Coin Management</button>
-                        <button class="tab-btn" onclick="showTab('linkvertise')">Linkvertise</button>
-                        <button class="tab-btn" onclick="showTab('store')">Store Management</button>
-                        <button class="tab-btn" onclick="showTab('panel')">Panel</button>
+                    <div class="tabs-scroll-container">
+                        <div class="tabs-nav">
+                            <button class="tab-btn active" onclick="showTab('users')">Users</button>
+                            <button class="tab-btn" onclick="showTab('servers')">Servers</button>
+                            <button class="tab-btn" onclick="showTab('coins')">Coin Management</button>
+                            <button class="tab-btn" onclick="showTab('linkvertise')">Linkvertise</button>
+                            <button class="tab-btn" onclick="showTab('store')">Store Management</button>
+                            <button class="tab-btn" onclick="showTab('panel')">Panel</button>
+                        </div>
                     </div>
                     
                     <!-- Users Tab -->
@@ -433,6 +439,7 @@
     <script src="/js/dashboard.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            initMobileMenu();
             await loadUserData();
             await loadSystemStats();
             await loadUsers();
@@ -565,18 +572,18 @@
                 return;
             }
             
-            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-            html += '<thead><tr style="background: rgba(124, 58, 237, 0.2); backdrop-filter: blur(10px);"><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">ID</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Username</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Email</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Coins</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Admin</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Actions</th></tr></thead><tbody>';
+            let html = '<div class="table-scroll-container"><table class="admin-table">';
+            html += '<thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Coins</th><th>Admin</th><th>Actions</th></tr></thead><tbody>';
             
             users.forEach(user => {
                 html += `
-                    <tr style="border-bottom: 1px solid rgba(124, 58, 237, 0.2);">
-                        <td style="padding: 12px; color: #f8fafc;">${user.id}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(user.username)}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(user.email)}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(user.coins || 0)}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${user.is_admin ? 'Yes' : 'No'}</td>
-                        <td style="padding: 12px;">
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${escapeHtml(user.username)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>${formatNumber(user.coins || 0)}</td>
+                        <td>${user.is_admin ? 'Yes' : 'No'}</td>
+                        <td>
                             <button class="btn btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="deleteUser(${user.id})">Delete</button>
                         </td>
                     </tr>
@@ -607,19 +614,19 @@
                 return;
             }
             
-            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
-            html += '<thead><tr style="background: rgba(124, 58, 237, 0.2); backdrop-filter: blur(10px);"><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">ID</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Name</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Owner</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">RAM</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">CPU</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Storage</th><th style="padding: 12px; text-align: left; color: #f8fafc; font-weight: 600;">Actions</th></tr></thead><tbody>';
+            let html = '<div class="table-scroll-container"><table class="admin-table">';
+            html += '<thead><tr><th>ID</th><th>Name</th><th>Owner</th><th>RAM</th><th>CPU</th><th>Storage</th><th>Actions</th></tr></thead><tbody>';
             
             servers.forEach(server => {
                 html += `
-                    <tr style="border-bottom: 1px solid rgba(124, 58, 237, 0.2);">
-                        <td style="padding: 12px; color: #f8fafc;">${server.id}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(server.name)}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${escapeHtml(server.username || 'Unknown')}</td>
-                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(server.ram)}MB</td>
-                        <td style="padding: 12px; color: #f8fafc;">${server.cpu}%</td>
-                        <td style="padding: 12px; color: #f8fafc;">${formatNumber(server.storage)}MB</td>
-                        <td style="padding: 12px;">
+                    <tr>
+                        <td>${server.id}</td>
+                        <td>${escapeHtml(server.name)}</td>
+                        <td>${escapeHtml(server.username || 'Unknown')}</td>
+                        <td>${formatNumber(server.ram)}MB</td>
+                        <td>${server.cpu}%</td>
+                        <td>${formatNumber(server.storage)}MB</td>
+                        <td>
                             <button class="btn btn-danger" style="font-size: 12px; padding: 4px 8px;" onclick="deleteServerAdmin(${server.id})">Delete</button>
                         </td>
                     </tr>
@@ -1618,6 +1625,43 @@
         
     </script>
     <style>
+        /* Tabs Navigation Container - Scrollable on Mobile */
+        .tabs-scroll-container {
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(124, 58, 237, 0.5) transparent;
+            margin: 0 -16px; /* Extend to card edges */
+            padding: 0 16px; /* Add padding back */
+        }
+
+        .tabs-scroll-container::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tabs-scroll-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tabs-scroll-container::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.5);
+            border-radius: 2px;
+        }
+
+        .tabs-scroll-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 58, 237, 0.7);
+        }
+
+        .tabs-nav {
+            display: flex;
+            gap: 16px;
+            border-bottom: 2px solid rgba(124, 58, 237, 0.3);
+            margin-bottom: 20px;
+            min-width: max-content; /* Prevent wrapping */
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
         .tab-btn {
             padding: 12px 24px;
             border: none;
@@ -1628,15 +1672,46 @@
             color: #cbd5e1;
             border-bottom: 2px solid transparent;
             margin-bottom: -2px;
+            white-space: nowrap; /* Prevent text wrapping */
+            flex-shrink: 0; /* Prevent buttons from shrinking */
         }
-        
+
         .tab-btn.active {
             color: #667eea;
             border-bottom-color: #667eea;
         }
-        
+
         .tab-btn:hover {
             color: #667eea;
+        }
+
+        /* Mobile optimizations for tabs */
+        @media (max-width: 768px) {
+            .tabs-scroll-container {
+                margin: 0 -12px;
+                padding: 0 12px;
+            }
+            
+            .tabs-nav {
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+            
+            .tab-btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tabs-nav {
+                gap: 8px;
+            }
+            
+            .tab-btn {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
         }
     </style>
 </body>

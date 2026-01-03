@@ -277,22 +277,276 @@
     flex-wrap: wrap;
 }
 
-/* Responsive */
+/* Mobile Menu Button (Hamburger) */
+.mobile-menu-btn {
+    display: none;
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    color: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 24px;
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(124, 58, 237, 0.3);
+    border-color: rgba(124, 58, 237, 0.5);
+}
+
+.mobile-menu-btn:active {
+    transform: scale(0.95);
+}
+
+/* Sidebar Overlay (for mobile) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Responsive Styles */
+/* Tablet and below (768px) */
 @media (max-width: 768px) {
+    /* Show mobile menu button */
+    .mobile-menu-btn {
+        display: block;
+    }
+    
+    /* Sidebar - hidden by default on mobile, shown as overlay when active */
     .sidebar {
-        width: 80px;
+        width: 280px;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 4px 0 30px rgba(0, 0, 0, 0.5);
     }
     
-    .nav-text {
-        display: none;
+    .sidebar.active {
+        transform: translateX(0);
     }
     
+    /* Main content - full width on mobile */
     .main-content {
-        margin-left: 80px;
+        margin-left: 0;
+        width: 100%;
     }
     
+    /* Dashboard header - stack vertically on mobile */
+    .dashboard-header {
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px 20px;
+        align-items: flex-start;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 20px;
+        width: 100%;
+    }
+    
+    .header-left {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+    
+    .header-right {
+        width: 100%;
+    }
+    
+    .coin-balance {
+        width: 100%;
+        justify-content: center;
+        font-size: 16px;
+        padding: 10px 16px;
+    }
+    
+    /* Dashboard content - reduce padding */
+    .dashboard-content {
+        padding: 20px 16px;
+    }
+    
+    /* Stats grid - single column */
     .stats-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    /* Stat cards - adjust for mobile */
+    .stat-card {
+        padding: 20px;
+        flex-direction: row;
+        gap: 16px;
+    }
+    
+    .stat-icon {
+        font-size: 40px;
+        width: 60px;
+        height: 60px;
+        flex-shrink: 0;
+    }
+    
+    .stat-info h3 {
+        font-size: 28px;
+    }
+    
+    .stat-info p {
+        font-size: 13px;
+    }
+    
+    /* Quick actions - full width buttons */
+    .quick-actions {
+        padding: 20px;
+    }
+    
+    .quick-actions h2 {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+}
+
+/* Mobile phones (480px and below) */
+@media (max-width: 480px) {
+    /* Further reduce padding */
+    .dashboard-content {
+        padding: 16px 12px;
+    }
+    
+    .dashboard-header {
+        padding: 12px 16px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 18px;
+    }
+    
+    /* Stat cards - smaller on very small screens */
+    .stat-card {
+        padding: 16px;
+        gap: 12px;
+    }
+    
+    .stat-icon {
+        font-size: 32px;
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-info h3 {
+        font-size: 24px;
+    }
+    
+    .stat-info p {
+        font-size: 12px;
+    }
+    
+    /* Quick actions */
+    .quick-actions {
+        padding: 16px;
+    }
+    
+    .quick-actions h2 {
+        font-size: 18px;
+    }
+    
+    /* Sidebar - slightly narrower on very small phones */
+    .sidebar {
+        width: 260px;
+    }
+    
+    /* Coin balance - smaller text */
+    .coin-balance {
+        font-size: 14px;
+        padding: 8px 14px;
+    }
+    
+    .coin-icon {
+        font-size: 20px;
+    }
+}
+
+/* Mobile-specific styles for dynamically generated content */
+@media (max-width: 768px) {
+    /* Server cards - stack content vertically */
+    .dashboard-content > div[style*="display: grid"] > div[style*="padding: 20px"] {
+        padding: 16px !important;
+    }
+    
+    .dashboard-content > div[style*="display: grid"] > div[style*="display: flex"] {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+    
+    /* Resource display grid - single column on mobile */
+    div[style*="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))"] {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    
+    /* Server list grid - single column */
+    div[style*="display: grid"][style*="gap: 16px"] {
+        gap: 12px !important;
+    }
+    
+    /* Buttons in server cards - full width on mobile */
+    .dashboard-content .btn {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    /* Server card buttons container - stack vertically */
+    div[style*="display: flex"][style*="gap: 8px"] {
+        flex-direction: column !important;
+        width: 100%;
+    }
+    
+    div[style*="display: flex"][style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Even smaller padding on very small screens */
+    .dashboard-content > div[style*="padding: 20px"] {
+        padding: 12px !important;
+    }
+    
+    /* Smaller font sizes in server cards */
+    .dashboard-content h3 {
+        font-size: 18px !important;
+    }
+    
+    .dashboard-content p {
+        font-size: 14px !important;
     }
 }
 

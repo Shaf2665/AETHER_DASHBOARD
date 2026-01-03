@@ -36,6 +36,12 @@ body {
     display: inline-block;
     position: relative;
     overflow: hidden;
+    /* Touch-friendly minimum size */
+    min-height: 44px;
+    min-width: 44px;
+    /* Prevent text selection on tap */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .btn-primary {
@@ -243,5 +249,262 @@ body {
     }
     100% {
         background-position: 0% 50%;
+    }
+}
+
+/* Admin Panel Table Scrollable Container */
+.table-scroll-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(124, 58, 237, 0.5) rgba(30, 30, 50, 0.3);
+    margin: 0 -16px; /* Extend to card edges on mobile */
+    padding: 0 16px; /* Add padding back for content */
+}
+
+.table-scroll-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+    background: rgba(30, 30, 50, 0.3);
+    border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+    background: rgba(124, 58, 237, 0.5);
+    border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(124, 58, 237, 0.7);
+}
+
+/* Admin Panel Tables */
+.admin-table {
+    width: 100%;
+    min-width: 700px; /* Minimum width to prevent cramping */
+    border-collapse: collapse;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.admin-table thead tr {
+    background: rgba(124, 58, 237, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+.admin-table th {
+    padding: 12px;
+    text-align: left;
+    color: #f8fafc;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.admin-table td {
+    padding: 12px;
+    color: #f8fafc;
+    white-space: nowrap;
+}
+
+.admin-table tbody tr {
+    border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+.admin-table tbody tr:hover {
+    background: rgba(124, 58, 237, 0.1);
+}
+
+/* Mobile Responsive Styles */
+/* Tablet and below (768px) */
+@media (max-width: 768px) {
+    /* Container - reduce padding */
+    .container {
+        padding: 16px;
+    }
+    
+    /* Buttons - larger touch targets on mobile */
+    .btn {
+        padding: 14px 20px;
+        font-size: 16px;
+        min-height: 48px;
+        width: 100%;
+        text-align: center;
+    }
+    
+    /* Forms - better mobile layout */
+    .form-group {
+        margin-bottom: 18px;
+    }
+    
+    .form-group label {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 14px 16px;
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 48px; /* Touch-friendly */
+        border-radius: 8px;
+    }
+    
+    /* Cards - reduce padding */
+    .card {
+        padding: 20px;
+        margin-bottom: 16px;
+    }
+    
+    .card-header {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+    
+    /* Tables - make scrollable on mobile */
+    table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+    
+    table thead,
+    table tbody,
+    table tr {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+    
+    /* Admin panel table optimizations */
+    .table-scroll-container {
+        margin: 0 -12px;
+        padding: 0 12px;
+    }
+    
+    .admin-table {
+        min-width: 600px; /* Slightly smaller on tablets */
+        font-size: 14px;
+    }
+    
+    .admin-table th,
+    .admin-table td {
+        padding: 10px 8px;
+    }
+    
+    .admin-table .btn {
+        font-size: 12px;
+        padding: 6px 10px;
+        white-space: nowrap;
+    }
+}
+
+/* Mobile phones (480px and below) */
+@media (max-width: 480px) {
+    /* Container - minimal padding */
+    .container {
+        padding: 12px;
+    }
+    
+    /* Buttons - even larger on small phones */
+    .btn {
+        padding: 16px 20px;
+        font-size: 16px;
+        min-height: 50px;
+    }
+    
+    /* Forms */
+    .form-group {
+        margin-bottom: 16px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 16px;
+        font-size: 16px;
+        min-height: 50px;
+    }
+    
+    /* Cards */
+    .card {
+        padding: 16px;
+        border-radius: 12px;
+    }
+    
+    .card-header {
+        font-size: 18px;
+        margin-bottom: 12px;
+    }
+    
+    /* Smaller text on very small screens */
+    body {
+        font-size: 14px;
+    }
+    
+    h1, h2, h3 {
+        word-wrap: break-word;
+    }
+    
+    /* Ensure inputs don't zoom on iOS */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Admin panel table - even smaller on phones */
+    .admin-table {
+        min-width: 550px; /* Minimum for phones */
+        font-size: 13px;
+    }
+    
+    .admin-table th,
+    .admin-table td {
+        padding: 8px 6px;
+    }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 768px) {
+    /* Prevent horizontal scroll */
+    body {
+        overflow-x: hidden;
+    }
+    
+    /* Make sure all containers respect viewport */
+    .container,
+    .dashboard-content,
+    .main-content {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    /* Improve touch targets */
+    a, button, .btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Better spacing for forms on mobile */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    /* Full width inputs on mobile */
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        box-sizing: border-box;
     }
 }

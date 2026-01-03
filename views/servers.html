@@ -55,10 +55,14 @@
             </div>
         </aside>
         
+        <!-- Sidebar Overlay (for mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
         <!-- Main Content -->
         <main class="main-content">
             <header class="dashboard-header">
                 <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">☰</button>
                     <h1 id="pageTitle">Manage Servers</h1>
                 </div>
                 <div class="header-right">
@@ -141,6 +145,11 @@
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
     <script>
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initMobileMenu();
+        });
+        
         // Check if we're on create server page
         if (window.location.pathname === '/servers/create') {
             showCreateServer();

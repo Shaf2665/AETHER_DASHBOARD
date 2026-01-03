@@ -55,11 +55,15 @@
             </div>
         </aside>
         
+        <!-- Sidebar Overlay (for mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
         <!-- Main Content -->
         <main class="main-content">
             <!-- Header -->
             <header class="dashboard-header">
                 <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">☰</button>
                     <h1>Welcome back, <span id="username">User</span>!</h1>
                 </div>
                 <div class="header-right">
@@ -115,6 +119,7 @@
     <script>
         // Initialize dashboard page
         document.addEventListener('DOMContentLoaded', async () => {
+            initMobileMenu();
             await loadUserData();
             await loadDashboardStats();
             checkAdminAccess();
