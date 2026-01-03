@@ -41,6 +41,16 @@ Before installing, make sure you have:
 
 ---
 
+## 📖 Installation Guides
+
+Choose the installation method that fits your setup:
+
+- **[Quick Start Guide](#-quick-start-5-minutes)** - For local installation on Windows, Mac, or Linux
+- **[Linux VM Installation Guide](LINUX_VM_INSTALLATION.md)** - Step-by-step guide for installing on a Linux virtual machine
+- **[Production Deployment](#-production-deployment)** - For deploying to a production server
+
+---
+
 ## 🚀 Quick Start (5 Minutes)
 
 Follow these steps in order:
