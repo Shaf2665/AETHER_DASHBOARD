@@ -146,9 +146,45 @@ pm2 restart aether-dashboard
 
 ## 📝 Version Changelog
 
-### Version 1.0.4 (Latest)
+### Version 1.2 (Latest)
 
 **Release Date:** Current
+
+**New Features:**
+- ✅ **Logo Shape Customization** - Choose from 6 different logo shapes!
+  - Available shapes: Square, Circle, Rounded, Triangle, Hexagon, Diamond
+  - Live preview in Admin Settings
+  - Applies to all logos across the dashboard
+  - Accessible via Admin Settings → Branding Settings → Logo Shape dropdown
+
+- ✅ **Branding Assets Reorganization** - Better file organization
+  - Default assets moved to `public/assets/defaults/`
+  - User-uploaded assets stored in `public/assets/branding/`
+  - Cleaner separation between default and custom branding
+
+- ✅ **Admin Watermark** - "Powered by Aether Dashboard" watermark
+  - Appears on Admin Panel and Admin Settings pages
+  - Fixed position in bottom-right corner
+  - Subtle, non-intrusive design
+  - Responsive for mobile devices
+
+**Improvements:**
+- 🎨 **Branding Flexibility** - More customization options for dashboard appearance
+- 🐛 **Bug Fixes** - Fixed Admin Settings link disappearing when navigating between pages
+- 📱 **Mobile Support** - Watermark adapts to mobile screen sizes
+- 🔧 **Code Optimization** - Improved multer configuration for file uploads
+
+**How to Update:**
+- If using GitHub: `git pull origin main && npm install && pm2 restart aether-dashboard`
+- If using SFTP: Download latest version, replace files (keep database.db and .env), run `npm install`, restart dashboard
+
+**Note:** The database will automatically add the `logo_shape` column on first run. No manual migration needed!
+
+---
+
+### Version 1.0.4
+
+**Release Date:** Previous
 
 **New Features:**
 - ✅ **Admin Password Reset Script** - Reset your admin password without losing data!
@@ -335,7 +371,7 @@ If you encounter issues during updates:
 
 ---
 
-**Last Updated:** Version 1.0.4
+**Last Updated:** Version 1.2
 
 **Made with ❤️ for free hosting providers**
 

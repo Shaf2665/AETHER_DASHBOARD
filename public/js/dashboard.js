@@ -56,12 +56,92 @@ function checkAdminAccess() {
         .then(res => res.json())
         .then(data => {
             if (data.user && data.user.is_admin) {
-                const adminLink = document.querySelector('.admin-only');
-                if (adminLink) {
-                    adminLink.style.display = 'flex';
-                }
+                // Show all admin-only items
+                document.querySelectorAll('.admin-only').forEach(item => {
+                    item.style.display = 'flex';  // This overrides inline style="display: none;"
+                });
+            } else {
+                // Hide admin items if not admin
+                document.querySelectorAll('.admin-only').forEach(item => {
+                    item.style.display = 'none';
+                });
             }
         })
-        .catch(err => console.error('Error checking admin access:', err));
+        .catch(err => {
+            console.error('Error checking admin access:', err);
+            // On error, hide admin items for security
+            document.querySelectorAll('.admin-only').forEach(item => {
+                item.style.display = 'none';
+            });
+        });
+}
+
+// Load and apply branding settings (logo, favicon, name, shape)
+async function loadBrandingSettings() {
+    try {
+        const response = await fetch('/admin/api/branding');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.settings) {
+                // Update dashboard name in sidebar
+                const sidebarTitle = document.querySelector('.sidebar-header h2');
+                if (sidebarTitle && data.settings.dashboard_name) {
+                    sidebarTitle.textContent = data.settings.dashboard_name;
+                }
+                
+                // Update page title
+                if (data.settings.dashboard_name) {
+                    const pageTitle = document.querySelector('title');
+                    if (pageTitle) {
+                        const currentPage = pageTitle.textContent.split(' - ')[1] || '';
+                        pageTitle.textContent = currentPage ? `${currentPage} - ${data.settings.dashboard_name}` : data.settings.dashboard_name;
+                    }
+                }
+                
+                // Update logo
+                if (data.settings.logo_path) {
+                    const logos = document.querySelectorAll('.dashboard-logo, .login-logo, .signup-logo');
+                    logos.forEach(logo => {
+                        logo.src = data.settings.logo_path;
+                    });
+                }
+                
+                // Apply logo shape
+                if (data.settings.logo_shape) {
+                    applyLogoShapeToAll(data.settings.logo_shape);
+                } else {
+                    // Default to square if no shape is set
+                    applyLogoShapeToAll('square');
+                }
+                
+                // Update favicon
+                if (data.settings.favicon_path) {
+                    const faviconLink = document.querySelector('link[rel="icon"]');
+                    if (faviconLink) {
+                        faviconLink.href = data.settings.favicon_path;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading branding settings:', error);
+        // On error, apply default square shape
+        applyLogoShapeToAll('square');
+    }
+}
+
+// Apply logo shape to all logos on the page
+function applyLogoShapeToAll(shape) {
+    const logos = document.querySelectorAll('.dashboard-logo, .login-logo, .signup-logo');
+    const shapes = ['square', 'circle', 'rounded', 'triangle', 'hexagon', 'diamond'];
+    
+    logos.forEach(logo => {
+        // Remove all shape classes
+        shapes.forEach(s => {
+            logo.classList.remove(`logo-${s}`);
+        });
+        // Add selected shape class
+        logo.classList.add(`logo-${shape}`);
+    });
 }
 

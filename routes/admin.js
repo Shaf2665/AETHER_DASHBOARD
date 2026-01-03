@@ -4,7 +4,48 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const fs = require('fs').promises;
+const multer = require('multer');
 const { query, get, run } = require('../config/database');
+
+// Configure multer for file uploads (configure once, use multiple times)
+const uploadPath = path.join(__dirname, '../public/assets/branding');
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadPath);
+    },
+    filename: (req, file, cb) => {
+        // Keep original extension
+        const ext = path.extname(file.originalname);
+        if (file.fieldname === 'logo') {
+            cb(null, `custom-logo${ext}`);
+        } else if (file.fieldname === 'favicon') {
+            cb(null, `custom-favicon${ext}`);
+        } else {
+            cb(null, file.originalname);
+        }
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        // Allow images only
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    }
+});
+
+// Multer middleware for branding uploads
+const brandingUpload = upload.fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'favicon', maxCount: 1 }
+]);
 
 // Validate URL format
 function isValidUrl(url) {
@@ -33,6 +74,11 @@ const requireAdmin = (req, res, next) => {
 // Admin dashboard page
 router.get('/', requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, '../views/admin.html'));
+});
+
+// Admin settings page
+router.get('/settings', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/admin-settings.html'));
 });
 
 // API endpoint to get system statistics
@@ -1116,6 +1162,131 @@ router.post('/api/panel/settings', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error saving settings:', error);
         res.status(500).json({ success: false, message: 'Error saving settings' });
+    }
+});
+
+// Branding Settings API
+// Get branding settings (public - accessible to all users)
+router.get('/api/branding', async (req, res) => {
+    try {
+        const settings = await get('SELECT * FROM dashboard_settings ORDER BY id DESC LIMIT 1');
+        res.json({
+            success: true,
+            settings: settings || {
+                dashboard_name: 'Aether Dashboard',
+                logo_path: '/assets/defaults/aether-dashboard-logo.png',
+                favicon_path: '/assets/defaults/aether-dashboard-favicon.ico',
+                logo_shape: 'square'
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching branding settings:', error);
+        res.status(500).json({ success: false, message: 'Error fetching branding settings' });
+    }
+});
+
+// Save branding settings (with file upload)
+router.post('/api/branding', requireAdmin, (req, res, next) => {
+    // Ensure branding directory exists before processing
+    fs.mkdir(uploadPath, { recursive: true })
+        .then(() => {
+            // Use multer middleware
+            brandingUpload(req, res, (err) => {
+                if (err) {
+                    return res.status(400).json({ success: false, message: err.message });
+                }
+                next();
+            });
+        })
+        .catch(err => {
+            console.error('Error creating upload directory:', err);
+            res.status(500).json({ success: false, message: 'Error setting up upload directory' });
+        });
+}, async (req, res) => {
+    try {
+        const { dashboard_name } = req.body;
+        
+        if (!dashboard_name || dashboard_name.trim().length === 0) {
+            return res.status(400).json({ success: false, message: 'Dashboard name is required' });
+        }
+        
+        // Get current settings
+        const currentSettings = await get('SELECT * FROM dashboard_settings ORDER BY id DESC LIMIT 1');
+        
+        let logoPath = currentSettings?.logo_path || '/assets/defaults/aether-dashboard-logo.png';
+        let faviconPath = currentSettings?.favicon_path || '/assets/defaults/aether-dashboard-favicon.ico';
+        const logoShape = req.body.logo_shape || currentSettings?.logo_shape || 'square';
+        
+        // Update paths if files were uploaded
+        if (req.files && req.files.logo && req.files.logo[0]) {
+            logoPath = `/assets/branding/${req.files.logo[0].filename}`;
+        }
+        
+        if (req.files && req.files.favicon && req.files.favicon[0]) {
+            faviconPath = `/assets/branding/${req.files.favicon[0].filename}`;
+        }
+        
+        // Save or update settings
+        if (currentSettings) {
+            await run(
+                'UPDATE dashboard_settings SET dashboard_name = ?, logo_path = ?, favicon_path = ?, logo_shape = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [dashboard_name.trim(), logoPath, faviconPath, logoShape, currentSettings.id]
+            );
+        } else {
+            await run(
+                'INSERT INTO dashboard_settings (dashboard_name, logo_path, favicon_path, logo_shape) VALUES (?, ?, ?, ?)',
+                [dashboard_name.trim(), logoPath, faviconPath, logoShape]
+            );
+        }
+        
+        res.json({
+            success: true,
+            message: 'Branding settings saved successfully',
+            settings: {
+                dashboard_name: dashboard_name.trim(),
+                logo_path: logoPath,
+                favicon_path: faviconPath,
+                logo_shape: logoShape
+            }
+        });
+    } catch (error) {
+        console.error('Error saving branding settings:', error);
+        res.status(500).json({ success: false, message: 'Error saving branding settings' });
+    }
+});
+
+// Reset branding to default
+router.post('/api/branding/reset', requireAdmin, async (req, res) => {
+    try {
+        const uploadPath = path.join(__dirname, '../public/assets/branding');
+        
+        // Delete custom files if they exist
+        const customFiles = [
+            'custom-logo.png', 'custom-logo.jpg', 'custom-logo.jpeg', 'custom-logo.svg',
+            'custom-favicon.ico', 'custom-favicon.png', 'custom-favicon.svg'
+        ];
+        
+        for (const file of customFiles) {
+            try {
+                await fs.unlink(path.join(uploadPath, file));
+            } catch (err) {
+                // File doesn't exist, that's okay
+            }
+        }
+        
+        // Reset settings to default
+        const currentSettings = await get('SELECT * FROM dashboard_settings ORDER BY id DESC LIMIT 1');
+        if (currentSettings) {
+            await run(
+                'UPDATE dashboard_settings SET dashboard_name = ?, logo_path = ?, favicon_path = ?, logo_shape = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                ['Aether Dashboard', '/assets/defaults/aether-dashboard-logo.png', '/assets/defaults/aether-dashboard-favicon.ico', 'square', currentSettings.id]
+            );
+        }
+        
+        res.json({ success: true, message: 'Branding reset to default successfully' });
+    } catch (error) {
+        console.error('Error resetting branding:', error);
+        res.status(500).json({ success: false, message: 'Error resetting branding' });
     }
 });
 

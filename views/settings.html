@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/assets/defaults/aether-dashboard-favicon.ico">
     <title>Settings - Aether Dashboard</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/dashboard.css">
@@ -12,6 +13,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
+                <img src="/assets/defaults/aether-dashboard-logo.png" alt="Aether Dashboard" class="dashboard-logo">
                 <h2>Aether Dashboard</h2>
             </div>
             
@@ -47,6 +49,10 @@
                 <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">Admin Panel</span>
+                </a>
+                <a href="/admin/settings" class="nav-item admin-only" data-page="admin-settings" style="display: none;">
+                    <span class="nav-icon">🎨</span>
+                    <span class="nav-text">Admin Settings</span>
                 </a>
             </nav>
             
@@ -114,6 +120,7 @@
             initMobileMenu();
             await loadUserData();
             checkAdminAccess();
+            loadBrandingSettings();
             
             // Load current email
             const userResponse = await fetch('/dashboard/api/user');

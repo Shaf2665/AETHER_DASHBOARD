@@ -372,6 +372,44 @@ function initializeDatabase() {
                 console.log('✅ Pterodactyl_Settings table created/verified');
             });
 
+            // Create Dashboard_Settings table
+            db.run(`
+                CREATE TABLE IF NOT EXISTS dashboard_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    dashboard_name TEXT DEFAULT 'Aether Dashboard',
+                    logo_path TEXT,
+                    favicon_path TEXT,
+                    logo_shape TEXT DEFAULT 'square',
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            `, (err) => {
+                if (err) {
+                    console.error('Error creating dashboard_settings table:', err);
+                    reject(err);
+                    return;
+                }
+                console.log('✅ Dashboard_Settings table created/verified');
+                
+                // Add logo_shape column if it doesn't exist (for existing installations)
+                db.run(`ALTER TABLE dashboard_settings ADD COLUMN logo_shape TEXT DEFAULT 'square'`, (err) => {
+                    // Ignore error if column already exists
+                });
+                
+                // Create default settings if table is empty
+                db.get('SELECT id FROM dashboard_settings', (err, row) => {
+                    if (!err && !row) {
+                        db.run('INSERT INTO dashboard_settings (dashboard_name, logo_path, favicon_path, logo_shape) VALUES (?, ?, ?, ?)', 
+                            ['Aether Dashboard', '/assets/defaults/aether-dashboard-logo.png', '/assets/defaults/aether-dashboard-favicon.ico', 'square'], 
+                            (err) => {
+                                if (!err) {
+                                    console.log('✅ Default dashboard settings created');
+                                }
+                            }
+                        );
+                    }
+                });
+            });
+
             // Create Resource_Prices table
             db.run(`
                 CREATE TABLE IF NOT EXISTS resource_prices (

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/assets/defaults/aether-dashboard-favicon.ico">
+    <title>Admin Settings - Aether Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="/assets/defaults/aether-dashboard-logo.png" alt="Aether Dashboard" class="dashboard-logo" id="sidebarLogo">
+                <h2 id="sidebarTitle">Aether Dashboard</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-text">Dashboard</span>
+                </a>
+                <a href="/servers" class="nav-item" data-page="servers">
+                    <span class="nav-icon">🖥️</span>
+                    <span class="nav-text">Manage Servers</span>
+                </a>
+                <a href="/servers/create" class="nav-item" data-page="create-server">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Create Server</span>
+                </a>
+                <a href="/linkvertise" class="nav-item" data-page="linkvertise">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Linkvertise</span>
+                </a>
+                <a href="/servers/store" class="nav-item" data-page="store">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-text">Resource Store</span>
+                </a>
+                <a href="/dashboard/profile" class="nav-item" data-page="profile">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-text">Profile</span>
+                </a>
+                <a href="/dashboard/settings" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Settings</span>
+                </a>
+                <a href="/admin" class="nav-item admin-only" data-page="admin" style="display: none;">
+                    <span class="nav-icon">🛡️</span>
+                    <span class="nav-text">Admin Panel</span>
+                </a>
+                <a href="/admin/settings" class="nav-item admin-only active" data-page="admin-settings" style="display: none;">
+                    <span class="nav-icon">🎨</span>
+                    <span class="nav-text">Admin Settings</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/auth/logout" class="btn btn-secondary" style="width: 100%;">Logout</a>
+            </div>
+        </aside>
+        
+        <!-- Sidebar Overlay (for mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">☰</button>
+                    <h1>Admin Settings</h1>
+                </div>
+                <div class="header-right">
+                    <div class="coin-balance">
+                        <span class="coin-icon">🪙</span>
+                        <span id="coinAmount">0</span> Coins
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <!-- Branding Section -->
+                <div class="card">
+                    <div class="card-header">Branding Settings</div>
+                    <p style="color: #cbd5e1; margin-bottom: 20px;">
+                        Customize your dashboard's appearance. Change the name, logo, and favicon to match your brand.
+                    </p>
+                    
+                    <form id="brandingForm">
+                        <!-- Dashboard Name -->
+                        <div class="form-group">
+                            <label for="dashboardName">Dashboard Name</label>
+                            <input type="text" id="dashboardName" placeholder="Aether Dashboard" required>
+                            <small style="color: #cbd5e1;">This name will appear in the sidebar header and page titles</small>
+                        </div>
+                        
+                        <!-- Logo Upload -->
+                        <div class="form-group">
+                            <label for="logoUpload">Dashboard Logo</label>
+                            <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/jpg,image/svg+xml" style="margin-bottom: 12px;">
+                                    <small style="color: #cbd5e1; display: block;">Recommended: PNG or SVG, transparent background, 200x200px or larger</small>
+                                </div>
+                                <div style="flex: 0 0 auto;">
+                                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; text-align: center;">
+                                        <p style="color: #cbd5e1; margin: 0 0 8px 0; font-size: 14px;">Current Logo Preview</p>
+                                        <img id="logoPreview" src="/assets/defaults/aether-dashboard-logo.png" alt="Logo Preview" class="logo-preview" style="max-width: 120px; max-height: 120px; object-fit: contain;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Logo Shape -->
+                        <div class="form-group">
+                            <label for="logoShape">Logo Shape</label>
+                            <select id="logoShape" style="width: 100%; padding: 12px; background: rgba(30, 30, 50, 0.6); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 8px; color: #f8fafc; font-size: 16px; margin-bottom: 8px;">
+                                <option value="square">Square</option>
+                                <option value="circle">Circle</option>
+                                <option value="rounded">Rounded</option>
+                                <option value="triangle">Triangle</option>
+                                <option value="hexagon">Hexagon</option>
+                                <option value="diamond">Diamond</option>
+                            </select>
+                            <small style="color: #cbd5e1;">Choose the shape for your logo display</small>
+                        </div>
+                        
+                        <!-- Favicon Upload -->
+                        <div class="form-group">
+                            <label for="faviconUpload">Favicon (Browser Tab Icon)</label>
+                            <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <input type="file" id="faviconUpload" accept="image/x-icon,image/png,image/svg+xml" style="margin-bottom: 12px;">
+                                    <small style="color: #cbd5e1; display: block;">Recommended: ICO, PNG, or SVG format, 32x32px or 16x16px</small>
+                                </div>
+                                <div style="flex: 0 0 auto;">
+                                    <div style="padding: 16px; background: rgba(30, 30, 50, 0.4); border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 12px; text-align: center;">
+                                        <p style="color: #cbd5e1; margin: 0 0 8px 0; font-size: 14px;">Current Favicon Preview</p>
+                                        <img id="faviconPreview" src="/assets/defaults/aether-dashboard-favicon.ico" alt="Favicon Preview" style="max-width: 48px; max-height: 48px; object-fit: contain; border-radius: 4px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button type="submit" class="btn btn-primary">Save Branding Settings</button>
+                            <button type="button" class="btn btn-secondary" onclick="resetBranding()">Reset to Default</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Powered by Watermark -->
+        <div class="powered-by-watermark">
+            Powered by <strong>Aether Dashboard</strong>
+        </div>
+    </div>
+    
+    <style>
+        /* Powered by Watermark */
+        .powered-by-watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.4);
+            z-index: 100;
+            pointer-events: none;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            letter-spacing: 0.3px;
+        }
+        
+        .powered-by-watermark strong {
+            color: rgba(124, 58, 237, 0.6);
+            font-weight: 600;
+        }
+        
+        /* Responsive watermark */
+        @media (max-width: 768px) {
+            .powered-by-watermark {
+                bottom: 12px;
+                right: 12px;
+                font-size: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .powered-by-watermark {
+                bottom: 8px;
+                right: 8px;
+                font-size: 9px;
+            }
+        }
+    </style>
+    
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+    <script>
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            initMobileMenu();
+            loadUserData();
+            loadBrandingSettings();
+            checkAdminAccess();
+        });
+        
+        // Load current branding settings
+        async function loadBrandingSettings() {
+            try {
+                const response = await fetch('/admin/api/branding');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.settings) {
+                        // Set dashboard name
+                        if (data.settings.dashboard_name) {
+                            document.getElementById('dashboardName').value = data.settings.dashboard_name;
+                            // Update sidebar title
+                            const sidebarTitle = document.getElementById('sidebarTitle');
+                            if (sidebarTitle) {
+                                sidebarTitle.textContent = data.settings.dashboard_name;
+                            }
+                        }
+                        
+                        // Set logo preview
+                        if (data.settings.logo_path) {
+                            document.getElementById('logoPreview').src = data.settings.logo_path;
+                            const sidebarLogo = document.getElementById('sidebarLogo');
+                            if (sidebarLogo) {
+                                sidebarLogo.src = data.settings.logo_path;
+                            }
+                        }
+                        
+                        // Set logo shape
+                        if (data.settings.logo_shape) {
+                            document.getElementById('logoShape').value = data.settings.logo_shape;
+                            applyLogoShape(data.settings.logo_shape);
+                        }
+                        
+                        // Set favicon preview
+                        if (data.settings.favicon_path) {
+                            document.getElementById('faviconPreview').src = data.settings.favicon_path;
+                            // Update favicon link
+                            const faviconLink = document.querySelector('link[rel="icon"]');
+                            if (faviconLink) {
+                                faviconLink.href = data.settings.favicon_path;
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading branding settings:', error);
+            }
+        }
+        
+        // Apply logo shape to preview and sidebar
+        function applyLogoShape(shape) {
+            const logoPreview = document.getElementById('logoPreview');
+            const sidebarLogo = document.getElementById('sidebarLogo');
+            
+            // Remove all shape classes
+            const shapes = ['square', 'circle', 'rounded', 'triangle', 'hexagon', 'diamond'];
+            shapes.forEach(s => {
+                if (logoPreview) {
+                    logoPreview.classList.remove(`logo-${s}`);
+                }
+                if (sidebarLogo) {
+                    sidebarLogo.classList.remove(`logo-${s}`);
+                }
+            });
+            
+            // Add selected shape class
+            if (logoPreview) {
+                logoPreview.classList.add(`logo-${shape}`);
+            }
+            if (sidebarLogo) {
+                sidebarLogo.classList.add(`logo-${shape}`);
+            }
+        }
+        
+        // Preview logo when file is selected
+        document.getElementById('logoUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('logoPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Update logo shape preview when shape is changed
+        document.getElementById('logoShape').addEventListener('change', function(e) {
+            applyLogoShape(e.target.value);
+        });
+        
+        // Preview favicon when file is selected
+        document.getElementById('faviconUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('faviconPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Handle branding form submission
+        document.getElementById('brandingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const dashboardName = document.getElementById('dashboardName').value.trim();
+            const logoFile = document.getElementById('logoUpload').files[0];
+            const faviconFile = document.getElementById('faviconUpload').files[0];
+            
+            if (!dashboardName) {
+                showNotification('Dashboard name is required', 'error');
+                return;
+            }
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+            
+            try {
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('dashboard_name', dashboardName);
+                formData.append('logo_shape', document.getElementById('logoShape').value);
+                if (logoFile) {
+                    formData.append('logo', logoFile);
+                }
+                if (faviconFile) {
+                    formData.append('favicon', faviconFile);
+                }
+                
+                const response = await fetch('/admin/api/branding', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Branding settings saved successfully! Please refresh the page to see changes.', 'success');
+                    // Update sidebar title immediately
+                    const sidebarTitle = document.getElementById('sidebarTitle');
+                    if (sidebarTitle) {
+                        sidebarTitle.textContent = dashboardName;
+                    }
+                    // Reload settings after a short delay
+                    setTimeout(() => {
+                        loadBrandingSettings();
+                    }, 1000);
+                } else {
+                    showNotification(data.message || 'Failed to save branding settings', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving branding:', error);
+                showNotification('An error occurred while saving', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+        
+        // Reset branding to default
+        async function resetBranding() {
+            if (!confirm('Are you sure you want to reset branding to default? This will remove your custom logo and favicon.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/branding/reset', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Branding reset to default successfully! Please refresh the page.', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showNotification(data.message || 'Failed to reset branding', 'error');
+                }
+            } catch (error) {
+                console.error('Error resetting branding:', error);
+                showNotification('An error occurred', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+
