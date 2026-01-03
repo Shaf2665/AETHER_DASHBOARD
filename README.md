@@ -1,6 +1,8 @@
-# Aether Dashboard - Production Setup Guide
+# Aether Dashboard - Free Hosting Revenue Platform
 
-A simple and beginner-friendly dashboard for managing Pterodactyl servers. Users can earn coins by completing Linkvertise links and use those coins to purchase server resources (RAM, CPU, Storage).
+A powerful dashboard for **free hosting providers** to monetize their services through Linkvertise. Your users complete links to earn coins, which they use to purchase server resources (RAM, CPU, Storage) for their game servers.
+
+**Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
 **Version:** 1.0.0  
 **Status:** Production Ready ✅
@@ -9,257 +11,701 @@ A simple and beginner-friendly dashboard for managing Pterodactyl servers. Users
 
 ## 🎯 What is This?
 
-This is a web application (like a website) that lets you:
-- Create an account and log in (with Discord OAuth support)
-- Earn coins by completing Linkvertise links
-- Use coins to buy server resources (RAM, CPU, Storage)
-- Create and manage game servers via Pterodactyl panel
-- Admin panel to control everything (users, servers, coins, pricing)
+**Aether Dashboard** is a complete revenue platform designed specifically for **free hosting providers** who want to:
 
-**Perfect for beginners!** No complex setup needed.
+- 💰 **Monetize your hosting** - Users complete Linkvertise links to earn coins, generating revenue for you
+- 🎮 **Manage game servers** - Integrate with Pterodactyl panel to provide Minecraft, CS:GO, and other game servers
+- 👥 **Control your business** - Full admin panel to manage users, pricing, resources, and revenue
+- 🚀 **Easy setup** - Designed for Linux VPS (the standard for hosting providers)
+
+### How It Works
+
+1. **Your users** complete Linkvertise links to earn coins
+2. **You earn revenue** from Linkvertise when users complete links
+3. **Users spend coins** to purchase server resources (RAM, CPU, Storage)
+4. **Users create servers** using their purchased resources
+5. **You manage everything** through the admin panel
+
+**Perfect for free hosting businesses!** No complex setup needed.
 
 ---
 
-## 📋 Prerequisites
+## 📚 Linux Basics - Don't Worry, It's Easy!
+
+**Never used Linux before?** Don't worry! Here's what you need to know:
+
+### What is a VPS?
+A **VPS (Virtual Private Server)** is like having your own computer in the cloud. You control it remotely.
+
+### What is SSH?
+**SSH (Secure Shell)** is how you connect to your VPS from your computer. It's like remote desktop, but for Linux.
+
+### What is a Terminal?
+A **terminal** (also called "command line" or "console") is a text-based way to control your computer. Instead of clicking buttons, you type commands.
+
+### How to Use This Guide
+- **Commands to type** are shown in gray boxes like this:
+  ```bash
+  type this command here
+  ```
+- **Replace text** in `brackets` with your actual information
+- **Press Enter** after typing each command
+- **Don't type the `$` or `#`** - those are just prompts showing you're in the terminal
+
+### Common Terms You'll See
+- **`sudo`** = "super user do" - gives you permission to do admin tasks (you'll type your password)
+- **`cd`** = "change directory" - moves you to a different folder
+- **`nano`** = a simple text editor (like Notepad, but in terminal)
+- **`pm2`** = a tool that keeps your dashboard running
+
+**Don't worry if this seems confusing!** Just follow the steps one by one, and you'll be fine! 🚀
+
+---
+
+## 📋 What You Need Before Starting
 
 Before installing, make sure you have:
 
-1. **A Computer** (Windows, Mac, or Linux)
-2. **Internet Connection**
-3. **Node.js Installed** (version 16 or higher)
+1. **A Linux VPS** (Ubuntu, Debian, CentOS, or RHEL)
+   - Most hosting providers use Linux
+   - If you're not sure what you have, it's probably Ubuntu (most common)
+   
+2. **SSH access to your VPS**
+   - Your VPS provider should give you:
+     - An IP address (like `123.45.67.89`)
+     - A username (usually `root` or `ubuntu`)
+     - A password (or SSH key)
+   
+3. **A domain name** (optional but recommended)
+   - You can start with just an IP address
+   - Domain makes it look more professional (like `dashboard.yoursite.com`)
 
-### Installing Node.js (Step-by-Step)
+4. **Node.js** - We'll install this together (don't worry about it now!)
 
-1. **Go to**: https://nodejs.org/
-2. **Download** the "LTS" version (the green button)
-3. **Run the installer** and click "Next" through all steps
-4. **Restart your computer** after installation
-5. **Verify it worked**: 
-   - Open Command Prompt (Windows) or Terminal (Mac/Linux)
-   - Type: `node --version`
-   - If you see a version number (like v18.17.0 or higher), you're good! ✅
-
----
-
-## 📖 Installation Guides
-
-Choose the installation method that fits your setup:
-
-- **[Quick Start Guide](#-quick-start-5-minutes)** - For local installation on Windows, Mac, or Linux
-- **[Linux VM Installation Guide](LINUX_VM_INSTALLATION.md)** - Step-by-step guide for installing on a Linux virtual machine
-- **[Production Deployment](#-production-deployment)** - For deploying to a production server
+**Don't have a VPS yet?** Popular options:
+- **DigitalOcean** - Very beginner-friendly, $5/month
+- **Vultr** - Good performance, $2.50/month
+- **Linode** - Reliable, $5/month
+- **Hetzner** - Great value, €4/month
+- **Contabo** - Budget-friendly
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## 🚀 Step-by-Step Installation Guide
 
-Follow these steps in order:
+**Follow these steps in order. Don't skip any steps!**
 
-### Step 1: Download/Extract the Project
+### Step 1: Connect to Your VPS (SSH)
 
-- If you downloaded a ZIP file, **extract it** to a folder (like `C:\AETHER_PANEL` or `~/AETHER_PANEL`)
-- Remember where you put it!
+**What you're doing:** Connecting your computer to your VPS so you can control it.
 
-### Step 2: Open Terminal/Command Prompt
+#### On Windows:
 
-**Windows:**
-- Press `Windows Key + R`
-- Type `cmd` and press Enter
-- Or search "Command Prompt" in Start Menu
+1. **Download PuTTY** (free SSH client):
+   - Go to: https://www.putty.org/
+   - Download and install PuTTY
+   - Or use Windows Terminal (Windows 10/11) or PowerShell
 
-**Mac:**
-- Press `Cmd + Space`
-- Type "Terminal" and press Enter
+2. **Open PuTTY** (or Windows Terminal/PowerShell)
 
-**Linux:**
-- Press `Ctrl + Alt + T`
+3. **Type this command:**
+   ```bash
+   ssh username@your-vps-ip
+   ```
+   
+   **Replace:**
+   - `username` with your VPS username (usually `root` or `ubuntu`)
+   - `your-vps-ip` with your VPS IP address
+   
+   **Example:**
+   ```bash
+   ssh root@123.45.67.89
+   ```
 
-### Step 3: Go to Your Project Folder
+4. **Press Enter**
 
-In the terminal, type:
+5. **If it asks "Are you sure you want to continue?"** - Type `yes` and press Enter
+
+6. **Enter your password** when prompted (you won't see the password as you type - that's normal!)
+
+7. **You're connected!** You should see something like:
+   ```
+   root@your-server:~#
+   ```
+
+#### On Mac/Linux:
+
+1. **Open Terminal** (search for "Terminal" in Applications)
+
+2. **Type the same command:**
+   ```bash
+   ssh username@your-vps-ip
+   ```
+
+3. **Follow the same steps as Windows**
+
+**💡 Tip:** If you can't connect, check:
+- Is your VPS running?
+- Is the IP address correct?
+- Did you enter the password correctly?
+- Check your VPS provider's documentation for SSH setup
+
+---
+
+### Step 2: Update Your System
+
+**What you're doing:** Making sure your VPS has the latest software updates.
+
+**First, check what Linux you're using:**
 ```bash
-cd path/to/your/AETHER_PANEL
+cat /etc/os-release
 ```
 
-**Example for Windows:**
+**Look for "NAME="** - it will say Ubuntu, Debian, CentOS, or something similar.
+
+#### If you have Ubuntu or Debian:
+
+Type this command:
 ```bash
-cd C:\AETHER_PANEL
+sudo apt update && sudo apt upgrade -y
 ```
 
-**Example for Mac/Linux:**
+**What this does:**
+- `sudo` = gives you admin permission (you'll type your password)
+- `apt update` = checks for updates
+- `apt upgrade -y` = installs updates (the `-y` means "yes to everything")
+
+**What you'll see:**
+- It will ask for your password (type it and press Enter)
+- Lots of text scrolling (this is normal!)
+- It may take 1-5 minutes
+
+#### If you have CentOS or RHEL:
+
+Type this command:
 ```bash
-cd ~/AETHER_PANEL
+sudo yum update -y
 ```
 
-💡 **Tip**: You can also drag the folder into the terminal window to auto-fill the path!
+**Same thing, different command!**
 
-### Step 4: Install Dependencies
+**✅ When it's done:** You'll see your prompt again (like `root@server:~#`)
 
-This downloads all the code libraries needed to run the dashboard.
+---
 
+### Step 3: Install Node.js
+
+**What you're doing:** Installing Node.js, which is needed to run the dashboard.
+
+#### For Ubuntu/Debian:
+
+**Step 3.1: Install curl (a tool we need)**
+```bash
+sudo apt install curl -y
+```
+
+**Step 3.2: Add Node.js repository**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+```
+
+**What this does:** Downloads and sets up the Node.js installation files
+
+**What you'll see:** Lots of text scrolling - this is normal! Wait for it to finish.
+
+**Step 3.3: Install Node.js**
+```bash
+sudo apt install -y nodejs
+```
+
+**What you'll see:** More text scrolling. Wait for it to finish.
+
+**Step 3.4: Check if it worked**
+```bash
+node --version
+```
+
+**What you should see:** Something like `v20.11.0` or similar (a version number)
+
+**Also check npm:**
+```bash
+npm --version
+```
+
+**What you should see:** Something like `10.2.4` or similar
+
+**✅ If you see version numbers:** Node.js is installed correctly! 🎉
+
+**❌ If you see "command not found":** Something went wrong. Try the steps again or check the troubleshooting section.
+
+#### For CentOS/RHEL:
+
+**Step 3.1: Install curl**
+```bash
+sudo yum install curl -y
+```
+
+**Step 3.2: Add Node.js repository**
+```bash
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+```
+
+**Step 3.3: Install Node.js**
+```bash
+sudo yum install -y nodejs
+```
+
+**Step 3.4: Check if it worked**
+```bash
+node --version
+npm --version
+```
+
+**Same as above - you should see version numbers!**
+
+---
+
+### Step 4: Get the Dashboard Code on Your VPS
+
+**What you're doing:** Getting the dashboard files onto your VPS.
+
+**Choose one method:**
+
+#### Option A: Upload Files via SFTP (Easiest for Beginners)
+
+**This is like copying files to your VPS using a program like FileZilla.**
+
+1. **Download FileZilla** (free):
+   - Go to: https://filezilla-project.org/
+   - Download FileZilla Client
+   - Install it
+
+2. **Open FileZilla**
+
+3. **Connect to your VPS:**
+   - **Host:** `sftp://your-vps-ip` (replace with your IP)
+   - **Username:** Your VPS username
+   - **Password:** Your VPS password
+   - **Port:** `22`
+   - Click **"Quickconnect"**
+
+4. **Upload the dashboard folder:**
+   - On the left: Find your dashboard folder on your computer
+   - On the right: Navigate to `/root` or `/home/username`
+   - Drag the dashboard folder from left to right
+   - Wait for upload to finish
+
+5. **In your SSH terminal, navigate to the folder:**
+   ```bash
+   cd AETHER_PANEL
+   ```
+   
+   (Replace `AETHER_PANEL` with whatever you named the folder)
+
+#### Option B: Clone from GitHub (If You Have GitHub)
+
+**Only use this if you have the code on GitHub!**
+
+**Step 4.1: Install git**
+```bash
+sudo apt install git -y  # Ubuntu/Debian
+# OR
+sudo yum install git -y  # CentOS/RHEL
+```
+
+**Step 4.2: Clone the repository**
+```bash
+git clone https://github.com/your-username/AETHER_PANEL.git
+```
+
+**Replace `your-username/AETHER_PANEL` with your actual GitHub repository**
+
+**Step 4.3: Go into the folder**
+```bash
+cd AETHER_PANEL
+```
+
+**✅ You should now be in the dashboard folder!**
+
+**How to check:** Type `pwd` and press Enter. It should show the folder path.
+
+---
+
+### Step 5: Install Dependencies
+
+**What you're doing:** Downloading all the code libraries the dashboard needs to run.
+
+**Make sure you're in the dashboard folder first!** (You should be from Step 4)
+
+Type this command:
 ```bash
 npm install
 ```
 
-⏳ **Wait for it to finish** (may take 1-2 minutes). You'll see lots of text scrolling - that's normal!
+**What this does:** Downloads and installs all required software packages
 
-### Step 5: Create the Configuration File
+**What you'll see:**
+- Lots of text scrolling (this is normal!)
+- It may take 1-3 minutes
+- You'll see lines like "added 245 packages"
 
-1. **Create a new file** called `.env` in your project folder
-   - You can use Notepad (Windows) or TextEdit (Mac)
-   - Make sure it's named exactly `.env` (with the dot at the start!)
+**✅ When it's done:** You'll see your prompt again. No errors = success!
 
-2. **Copy and paste this** into the `.env` file:
-
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-SESSION_SECRET=change-this-to-any-random-text-12345-very-secure-key
-
-# Discord OAuth (optional - leave empty if you don't have Discord setup)
-DISCORD_CLIENT_ID=
-DISCORD_CLIENT_SECRET=
-DISCORD_CALLBACK_URL=http://localhost:3000/auth/discord/callback
-
-# Pterodactyl Panel (optional - leave empty if you don't have Pterodactyl)
-# You can also configure this via Admin Panel after installation
-PTERODACTYL_URL=
-PTERODACTYL_API_KEY=
-```
-
-3. **Change the SESSION_SECRET** to any random text (like `my-super-secret-key-abc123xyz789`)
-   - ⚠️ **IMPORTANT**: Make this at least 32 characters long for production!
-
-4. **Save the file**
-
-### Step 6: Start the Server
-
-```bash
-npm start
-```
-
-You should see:
-```
-✅ Database initialized
-Server running on http://localhost:3000
-```
-
-🎉 **Success!** Your dashboard is now running!
-
-### Step 7: Open in Browser
-
-1. Open your web browser (Chrome, Firefox, Edge, etc.)
-2. Go to: `http://localhost:3000`
-3. You should see the login page!
-
-### Step 8: Login as Admin
-
-The dashboard creates a default admin account for you:
-
-- **Username**: `admin`
-- **Password**: `admin123`
-
-⚠️ **IMPORTANT**: Change this password immediately after first login!
+**❌ If you see errors:** Check the troubleshooting section.
 
 ---
 
-## 🌐 Production Deployment
+### Step 6: Create Configuration File
 
-For production use (making it accessible to others online), follow these additional steps:
+**What you're doing:** Creating a settings file that tells the dashboard how to run.
 
-### Option 1: Using PM2 (Recommended for VPS/Dedicated Server)
-
-PM2 keeps your application running even if it crashes and automatically restarts it.
-
-#### Install PM2:
+**Step 6.1: Create the file**
 ```bash
-npm install -g pm2
+nano .env
 ```
 
-#### Start the Dashboard with PM2:
-```bash
-pm2 start server.js --name aether-dashboard
-```
+**What this does:** Opens a text editor called "nano" to create/edit the `.env` file
 
-#### Useful PM2 Commands:
-```bash
-pm2 list              # View all running apps
-pm2 logs aether-dashboard  # View logs
-pm2 restart aether-dashboard  # Restart the app
-pm2 stop aether-dashboard     # Stop the app
-pm2 delete aether-dashboard  # Remove from PM2
-pm2 save              # Save current process list
-pm2 startup           # Auto-start on server reboot
-```
+**What you'll see:** A blank screen (or some text if the file exists)
 
-### Option 2: Using Systemd (Linux)
+**Step 6.2: Copy and paste this content:**
 
-Create a systemd service file:
-
-1. Create file: `/etc/systemd/system/aether-dashboard.service`
-2. Add this content:
-
-```ini
-[Unit]
-Description=Aether Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=your-username
-WorkingDirectory=/path/to/AETHER_PANEL
-ExecStart=/usr/bin/node /path/to/AETHER_PANEL/server.js
-Restart=always
-RestartSec=10
-Environment=NODE_ENV=production
-
-[Install]
-WantedBy=multi-user.target
-```
-
-3. Enable and start:
-```bash
-sudo systemctl enable aether-dashboard
-sudo systemctl start aether-dashboard
-sudo systemctl status aether-dashboard
-```
-
-### Production Environment Variables
-
-Update your `.env` file for production:
+**⚠️ IMPORTANT:** Right-click in the terminal to paste (or `Shift + Insert`)
 
 ```env
 # Server Configuration
 PORT=3000
 NODE_ENV=production
-SESSION_SECRET=your-very-long-random-secret-key-at-least-32-characters
+SESSION_SECRET=change-this-to-a-very-long-random-text-at-least-32-characters-abc123xyz789
 
-# Discord OAuth (if using)
-DISCORD_CLIENT_ID=your-client-id
-DISCORD_CLIENT_SECRET=your-client-secret
+# HTTPS Configuration (set to 'true' if using HTTPS/SSL)
+USE_HTTPS=true
+
+# Discord OAuth (optional - leave empty if not using)
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
 DISCORD_CALLBACK_URL=https://yourdomain.com/auth/discord/callback
 
-# Pterodactyl Panel (if using)
-PTERODACTYL_URL=https://panel.yoursite.com
-PTERODACTYL_API_KEY=ptlc_xxxxxxxxxxxxx
+# Pterodactyl Panel (optional - configure via Admin Panel after installation)
+PTERODACTYL_URL=
+PTERODACTYL_API_KEY=
 ```
 
-### Setting Up Reverse Proxy (Nginx)
+**Step 6.3: Make these changes:**
 
-If you want to use a domain name and HTTPS, set up Nginx:
+1. **Change `SESSION_SECRET`:** 
+   - Replace the long text with any random text (at least 32 characters)
+   - Example: `my-super-secret-key-abc123xyz789-very-secure-2024`
+   - You can use letters, numbers, and dashes
 
-1. **Install Nginx** (if not already installed):
+2. **If you have a domain:** Replace `yourdomain.com` with your actual domain
+
+3. **If using HTTP (not HTTPS):** Change `USE_HTTPS=true` to `USE_HTTPS=false`
+
+**Step 6.4: Save the file:**
+
+1. **Press `Ctrl + X`** (to exit)
+2. **Press `Y`** (to confirm you want to save)
+3. **Press `Enter`** (to confirm the filename)
+
+**✅ You're back at the terminal!** The file is saved.
+
+**💡 Tip:** If you make a mistake, just type `nano .env` again to edit it!
+
+---
+
+### Step 7: Start the Dashboard with PM2
+
+**What you're doing:** Starting the dashboard and making sure it keeps running.
+
+**PM2** is a tool that:
+- Keeps your dashboard running even if it crashes
+- Automatically restarts it if something goes wrong
+- Keeps it running even if you close your SSH connection
+
+**Step 7.1: Install PM2**
 ```bash
-# Ubuntu/Debian
-sudo apt update
-sudo apt install nginx
-
-# CentOS/RHEL
-sudo yum install nginx
+sudo npm install -g pm2
 ```
 
-2. **Create Nginx configuration** at `/etc/nginx/sites-available/aether-dashboard`:
+**What this does:** Installs PM2 globally so you can use it anywhere
+
+**What you'll see:** Text scrolling, then your prompt returns
+
+**Step 7.2: Start the dashboard**
+```bash
+pm2 start server.js --name aether-dashboard
+```
+
+**What this does:** Starts your dashboard with the name "aether-dashboard"
+
+**What you should see:**
+```
+[PM2] Starting in fork_mode
+[PM2] Successfully started
+┌─────┬──────────────────┬─────────┬─────────┬──────────┐
+│ id  │ name             │ status  │ restart │ uptime   │
+├─────┼──────────────────┼─────────┼─────────┼──────────┤
+│ 0   │ aether-dashboard │ online  │ 0       │ 0s       │
+└─────┴──────────────────┴─────────┴─────────┴──────────┘
+```
+
+**✅ If you see this:** Your dashboard is running! 🎉
+
+**Step 7.3: Save PM2 configuration**
+```bash
+pm2 save
+```
+
+**What this does:** Saves the current setup so PM2 remembers it
+
+**Step 7.4: Set up auto-start on reboot**
+```bash
+pm2 startup
+```
+
+**What this does:** Makes the dashboard start automatically when your VPS reboots
+
+**What you'll see:** It will give you a command to run. It will look like:
+```
+sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u your-username --hp /home/your-username
+```
+
+**Copy that entire command** (the one starting with `sudo`) and paste it, then press Enter.
+
+**✅ Done!** Your dashboard will now start automatically on reboot!
+
+**Useful PM2 Commands (for later):**
+```bash
+pm2 list                    # See all running apps
+pm2 logs aether-dashboard   # See what's happening (logs)
+pm2 restart aether-dashboard  # Restart the dashboard
+pm2 stop aether-dashboard     # Stop the dashboard
+```
+
+---
+
+### Step 8: Configure Firewall
+
+**What you're doing:** Opening the necessary ports so people can access your dashboard.
+
+**Think of a firewall like a security guard** - it blocks everything unless you tell it what to allow.
+
+**First, check what firewall you have:**
+
+**For Ubuntu/Debian (most common):**
+```bash
+sudo ufw status
+```
+
+**If it says "Status: active"** - you have UFW firewall
+
+**If it says "Status: inactive"** - firewall is off (you can skip this step, but it's recommended to enable it)
+
+**Enable and configure UFW:**
+```bash
+sudo ufw allow 3000/tcp    # Allows dashboard access
+sudo ufw allow 80/tcp      # Allows HTTP (for websites)
+sudo ufw allow 443/tcp     # Allows HTTPS (secure websites)
+sudo ufw allow 22/tcp      # Allows SSH (so you can still connect!)
+sudo ufw enable            # Turns on the firewall
+```
+
+**What each line does:**
+- `allow 3000/tcp` = Allows access to port 3000 (your dashboard)
+- `allow 80/tcp` = Allows HTTP traffic
+- `allow 443/tcp` = Allows HTTPS traffic
+- `allow 22/tcp` = Allows SSH (so you don't lock yourself out!)
+- `enable` = Turns on the firewall
+
+**For CentOS/RHEL:**
+```bash
+sudo firewall-cmd --permanent --add-port=3000/tcp
+sudo firewall-cmd --permanent --add-port=80/tcp
+sudo firewall-cmd --permanent --add-port=443/tcp
+sudo firewall-cmd --permanent --add-port=22/tcp
+sudo firewall-cmd --reload
+```
+
+**⚠️ IMPORTANT:** If you're using a cloud provider (DigitalOcean, AWS, GCP, etc.), you ALSO need to configure their firewall in their control panel:
+- DigitalOcean: Networking → Firewalls
+- AWS: Security Groups
+- GCP: VPC Network → Firewall Rules
+- Add rules to allow ports 3000, 80, 443, and 22
+
+---
+
+### Step 9: Access Your Dashboard!
+
+**What you're doing:** Opening your dashboard in a web browser!
+
+**Option 1: Using IP Address (Quick Test)**
+
+1. **Open your web browser** (Chrome, Firefox, etc.)
+
+2. **Go to:** `http://your-vps-ip:3000`
+   
+   Replace `your-vps-ip` with your actual VPS IP address
+   
+   **Example:** `http://123.45.67.89:3000`
+
+3. **You should see the login page!** 🎉
+
+**Option 2: Using Domain Name (Recommended)**
+
+If you have a domain, set up Nginx (see the "Production Setup" section below).
+
+**Default Admin Login:**
+- **Username:** `admin`
+- **Password:** `admin123`
+
+**⚠️ VERY IMPORTANT:** Change this password immediately after logging in!
+
+**How to change password:**
+1. Log in
+2. Click on your profile/settings
+3. Find "Change Password"
+4. Enter new password
+5. Save
+
+---
+
+## 💰 Setting Up Revenue Generation (Linkvertise)
+
+**This is how you earn money from your free hosting!**
+
+### Step 1: Get Your Linkvertise Publisher Account
+
+1. **Go to:** https://publisher.linkvertise.com/
+2. **Create an account** (if you don't have one)
+   - Click "Sign Up"
+   - Fill in your details
+   - Verify your email
+3. **Get your Publisher Link:**
+   - After logging in, you'll see your Publisher Link
+   - It looks like: `https://publisher.linkvertise.com/ac/1450748`
+   - Copy this link
+4. **Note your Publisher ID:**
+   - It's the number at the end of the link (like `1450748`)
+
+### Step 2: Configure Linkvertise in Your Dashboard
+
+1. **Log into your dashboard** as admin
+   - Go to your dashboard URL
+   - Username: `admin`
+   - Password: `admin123` (change this!)
+
+2. **Go to Admin Panel:**
+   - Look for the shield icon (🛡️) in the sidebar
+   - Click it
+
+3. **Click the "Linkvertise" tab**
+
+4. **In "Linkvertise Configuration":**
+   - **Publisher Link:** Paste your Publisher Link here
+   - **Publisher ID:** Will be filled automatically
+   - **Default Coins:** Set how many coins users get per link (e.g., `10`)
+   - **Cooldown Timer:** Set time between completions in seconds (e.g., `30`)
+   - Click **"Save Configuration"**
+
+**✅ Configuration saved!**
+
+### Step 3: Add Your First Monetized Link
+
+1. **In your Linkvertise dashboard:**
+   - Create a new monetized link
+   - Copy the Linkvertise URL (looks like `https://linkvertise.com/123456/...`)
+
+2. **Back in your Aether Dashboard:**
+   - In the "Manage Links" section
+   - Click **"Add New Link"**
+
+3. **Fill in the form:**
+   - **Link Title:** "Complete this link" (or any name)
+   - **Linkvertise URL:** Paste the monetized link from Linkvertise
+     - ⚠️ **NOT** your publisher link!
+     - This is the actual link users will complete
+   - **Coins Reward:** How many coins users earn (e.g., `15`)
+   - **Active:** Check this box (makes it visible to users)
+
+4. **Click "Save Link"**
+
+**✅ Your first monetized link is ready!**
+
+### How Revenue Works
+
+1. **Users visit your dashboard**
+2. **They complete Linkvertise links** you've configured
+3. **You earn money** from Linkvertise for each completion
+4. **Users earn coins** which they can spend on server resources
+5. **You control pricing** - set how many coins each resource costs
+
+**It's that simple!** 💰
+
+---
+
+## 🌐 Setting Up Domain & HTTPS (Optional but Recommended)
+
+**This makes your dashboard look more professional and secure.**
+
+### Why Use a Domain?
+
+- Looks professional: `https://dashboard.yoursite.com` vs `http://123.45.67.89:3000`
+- More secure with HTTPS (SSL certificate)
+- Easier for users to remember
+
+### Step 1: Point Your Domain to Your VPS
+
+**In your domain registrar (where you bought the domain):**
+
+1. **Go to DNS settings**
+2. **Add an A record:**
+   - **Type:** A
+   - **Name:** `dashboard` (or `@` for root domain)
+   - **Value:** Your VPS IP address
+   - **TTL:** 3600 (or default)
+
+3. **Wait 5-30 minutes** for DNS to propagate
+
+**How to check if it's working:**
+```bash
+ping dashboard.yourdomain.com
+```
+
+If you see your VPS IP, it's working!
+
+### Step 2: Install Nginx
+
+**Nginx** is a web server that handles your domain and HTTPS.
+
+**For Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install nginx -y
+```
+
+**For CentOS/RHEL:**
+```bash
+sudo yum install nginx -y
+```
+
+**Check if it's running:**
+```bash
+sudo systemctl status nginx
+```
+
+**You should see "active (running)"**
+
+### Step 3: Create Nginx Configuration
+
+**Step 3.1: Create the config file**
+```bash
+sudo nano /etc/nginx/sites-available/aether-dashboard
+```
+
+**Step 3.2: Paste this configuration:**
+
+**⚠️ Replace `yourdomain.com` with your actual domain!**
 
 ```nginx
 server {
@@ -269,614 +715,407 @@ server {
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        
+        # Essential headers for sessions and reverse proxy
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        
+        # WebSocket support (if needed)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        
+        # Cookie and session support
+        proxy_cookie_path / /;
+        
         proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-3. **Enable the site**:
+**Step 3.3: Save the file:**
+- Press `Ctrl + X`
+- Press `Y`
+- Press `Enter`
+
+**Step 3.4: Enable the site:**
 ```bash
 sudo ln -s /etc/nginx/sites-available/aether-dashboard /etc/nginx/sites-enabled/
-sudo nginx -t  # Test configuration
+```
+
+**Step 3.5: Test the configuration:**
+```bash
+sudo nginx -t
+```
+
+**You should see:** `syntax is ok` and `test is successful`
+
+**Step 3.6: Reload Nginx:**
+```bash
 sudo systemctl reload nginx
 ```
 
-4. **Set up SSL with Let's Encrypt** (for HTTPS):
+**✅ Nginx is configured!**
+
+### Step 4: Set Up HTTPS (Free SSL Certificate)
+
+**We'll use Let's Encrypt** - it's free and automatic!
+
+**Step 4.1: Install Certbot**
 ```bash
-sudo apt install certbot python3-certbot-nginx
+sudo apt install certbot python3-certbot-nginx -y
+```
+
+**Step 4.2: Get SSL Certificate**
+```bash
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
 
-### Security Checklist for Production
+**Replace `yourdomain.com` with your actual domain!**
+
+**What happens:**
+- It will ask for your email (for renewal notices)
+- It will ask to agree to terms (type `A` and press Enter)
+- It will ask about sharing email (type `Y` or `N` and press Enter)
+- It will automatically configure HTTPS!
+
+**✅ Your dashboard now has HTTPS!**
+
+**Step 4.3: Update your `.env` file:**
+```bash
+nano .env
+```
+
+**Change this line:**
+```env
+USE_HTTPS=true
+```
+
+**Save:** `Ctrl + X`, then `Y`, then `Enter`
+
+**Step 4.4: Restart the dashboard:**
+```bash
+pm2 restart aether-dashboard
+```
+
+**✅ Your dashboard is now accessible at `https://yourdomain.com`!**
+
+**💡 Tip:** Certbot automatically renews your certificate. You don't need to do anything!
+
+---
+
+## 🎮 Setting Up Pterodactyl Panel Integration (Optional)
+
+**Note:** This is only needed if you want to provide actual game servers. You can use the dashboard for revenue generation without Pterodactyl!
+
+### What is Pterodactyl?
+
+**Pterodactyl** is a game server management panel. It lets you create and manage Minecraft, CS:GO, and other game servers for your users.
+
+### Getting Your Pterodactyl API Key
+
+1. **Log into your Pterodactyl panel**
+   - Go to your Pterodactyl panel URL
+   - Log in as admin
+
+2. **Go to API Credentials:**
+   - Click **"Admin"** in the sidebar
+   - Click **"API Credentials"**
+
+3. **Create New Credentials:**
+   - Click **"Create New Credentials"**
+   - **Description:** "Aether Dashboard" (or any name)
+   - **Permissions:** Select **"Read & Write"**
+   - Click **"Create"**
+
+4. **Copy the API Key:**
+   - **⚠️ IMPORTANT:** Copy this immediately! You'll only see it once!
+   - It looks like: `ptlc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+   - Save it somewhere safe
+
+5. **Copy your Panel URL:**
+   - It's the URL you use to access Pterodactyl
+   - Example: `https://panel.yoursite.com`
+
+### Configure in Your Dashboard
+
+**Option 1: Via Admin Panel (Easiest)**
+
+1. **Log into your Aether Dashboard** as admin
+
+2. **Go to Admin Panel:**
+   - Click the shield icon (🛡️)
+   - Click the **"Panel"** tab
+
+3. **Enter your details:**
+   - **Panel URL:** Paste your Pterodactyl panel URL
+   - **API Key:** Paste your API key
+
+4. **Test the connection:**
+   - Click **"Test Connection"**
+   - You should see "Connection successful!"
+
+5. **Save:**
+   - Click **"Connect"** or **"Save"**
+
+**✅ Pterodactyl is connected!**
+
+**Option 2: Via `.env` File**
+
+1. **Edit the `.env` file:**
+   ```bash
+   nano .env
+   ```
+
+2. **Add these lines:**
+   ```env
+   PTERODACTYL_URL=https://panel.yoursite.com
+   PTERODACTYL_API_KEY=ptlc_xxxxxxxxxxxxx
+   ```
+
+3. **Save:** `Ctrl + X`, then `Y`, then `Enter`
+
+4. **Restart the dashboard:**
+   ```bash
+   pm2 restart aether-dashboard
+   ```
+
+**✅ Your users can now create game servers!**
+
+---
+
+## 🎨 Managing Your Hosting Business
+
+### For You (Administrator)
+
+**Access Admin Panel:**
+- Click the shield icon (🛡️) in the sidebar
+- You'll see several tabs:
+
+**1. User Management:**
+- See all your users
+- Edit user details
+- Delete users
+- Monitor user activity
+
+**2. Server Management:**
+- See all servers created by users
+- Delete servers if needed
+- Monitor resource usage
+
+**3. Coin Management:**
+- Add or remove coins from any user
+- Search users by username
+- Track coin distribution
+
+**4. Linkvertise Management:**
+- Configure publisher settings
+- Add/edit/delete monetized links
+- Set coin rewards
+- Monitor link completion rates
+
+**5. Store Management:**
+- Set prices for RAM, CPU, Storage
+- Set price for Server Slots
+- Adjust pricing to optimize revenue
+
+**6. Panel Configuration:**
+- Connect to Pterodactyl panel
+- Manage eggs and allocations
+- Sync users to Pterodactyl
+
+### For Your Users
+
+Your users will:
+1. **Sign Up** - Create account or use Discord login
+2. **Earn Coins** - Complete Linkvertise links you've configured
+3. **Buy Resources** - Spend coins on RAM, CPU, Storage, Server Slots
+4. **Create Servers** - Use purchased resources to create game servers
+5. **Manage Servers** - View and manage their servers
+
+---
+
+## 🔒 Security Checklist for Production
+
+Before going live, make sure you've completed:
 
 - [ ] Changed default admin password
 - [ ] Set `NODE_ENV=production` in `.env`
 - [ ] Used a strong `SESSION_SECRET` (32+ characters, random)
-- [ ] Set up HTTPS/SSL certificate
+- [ ] Set up HTTPS/SSL certificate (Let's Encrypt is free)
 - [ ] Configured firewall (only allow ports 80, 443, and SSH)
 - [ ] Set up regular backups of `database.db`
 - [ ] Updated Node.js to latest LTS version
-- [ ] Using PM2 or systemd to keep app running
+- [ ] Using PM2 to keep app running
 - [ ] Set up monitoring/logging
 - [ ] Restricted admin panel access (if possible)
 
 ---
 
-## 📖 Detailed Setup Guide
-
-### Understanding the Files
-
-Don't worry - you don't need to understand everything! But here's what the main files do:
-
-- **`server.js`** - The main program that runs everything
-- **`package.json`** - Lists all the code libraries needed
-- **`.env`** - Your settings file (passwords, API keys, etc.)
-- **`database.db`** - Where all your data is stored (created automatically)
-- **`views/`** folder - The HTML pages users see
-- **`routes/`** folder - The code that handles different pages
-- **`public/`** folder - CSS and JavaScript files
-- **`config/`** folder - Configuration files (database, Pterodactyl)
-
-### What is `.env` File?
-
-The `.env` file stores your secret settings. Think of it like a settings menu:
-
-- **PORT**: Which port number to use (3000 is fine, change if needed)
-- **NODE_ENV**: Set to `production` for production, `development` for testing
-- **SESSION_SECRET**: A password to keep sessions secure (make it random and long!)
-- **Discord settings**: Only needed if you want Discord login
-- **Pterodactyl settings**: Only needed if you have a Pterodactyl panel
-
-### What is SQLite Database?
-
-SQLite is a simple database (like an Excel file). It stores:
-- User accounts
-- Server information
-- Coin balances
-- Link completion history
-- Resource purchases
-- Admin settings
-
-**You don't need to do anything** - it's created automatically as `database.db`!
-
-**Backup Tip**: Just copy the `database.db` file to backup all your data!
-
----
-
-## 🔧 Optional: Setting Up Discord Login
-
-If you want users to log in with Discord:
-
-### Step 1: Create Discord Application
-
-1. Go to: https://discord.com/developers/applications
-2. Click **"New Application"**
-3. Give it a name (like "Aether Dashboard")
-4. Click **"Create"**
-
-### Step 2: Get Your Credentials
-
-1. In the left sidebar, click **"OAuth2"**
-2. Under **"Redirects"**, click **"Add Redirect"**
-3. Add this URL: 
-   - Development: `http://localhost:3000/auth/discord/callback`
-   - Production: `https://yourdomain.com/auth/discord/callback`
-4. Click **"Save Changes"**
-5. Copy the **"Client ID"** (looks like: `123456789012345678`)
-6. Click **"Reset Secret"** and copy the **"Client Secret"** (looks like: `abc123xyz789...`)
-
-### Step 3: Add to `.env` File
-
-Open your `.env` file and add:
-
-```env
-DISCORD_CLIENT_ID=your-client-id-here
-DISCORD_CLIENT_SECRET=your-client-secret-here
-DISCORD_CALLBACK_URL=http://localhost:3000/auth/discord/callback
-```
-
-Replace `your-client-id-here` and `your-client-secret-here` with the values you copied.
-
-### Step 4: Restart Server
-
-Stop the server (press `Ctrl + C`) and start it again:
-
-```bash
-npm start
-```
-
-✅ Discord login should now work!
-
----
-
-## 🎮 Optional: Setting Up Pterodactyl Panel
-
-**Note**: This is only needed if you want to create real game servers. You can use the dashboard without this!
-
-### What is Pterodactyl?
-
-Pterodactyl is a game server management panel. It lets you create and manage Minecraft, CS:GO, and other game servers.
-
-### Getting Pterodactyl API Key
-
-1. **Log into your Pterodactyl panel**
-2. Go to **"Admin"** → **"API Credentials"**
-3. Click **"Create New Credentials"**
-4. Give it a name (like "Aether Dashboard")
-5. Set permissions to **"Read & Write"**
-6. Click **"Create"**
-7. **Copy the API key** (you'll only see it once!)
-8. **Copy your panel URL** (like: `https://panel.yoursite.com`)
-
-### Configure via Admin Panel (Recommended)
-
-1. Log into the dashboard as admin
-2. Go to **"Admin Panel"** → **"Panel"** tab
-3. Enter your **Panel URL** and **API Key**
-4. Click **"Test Connection"** to verify
-5. Click **"Connect"** to save
-
-### Or Add to `.env` File
-
-```env
-PTERODACTYL_URL=https://panel.yoursite.com
-PTERODACTYL_API_KEY=ptlc_xxxxxxxxxxxxx
-```
-
-Replace with your actual URL and API key.
-
-### Restart Server
-
-```bash
-npm start
-```
-
-✅ Pterodactyl integration is now active!
-
----
-
-## 💰 Setting Up Linkvertise (For Admins)
-
-Linkvertise lets users earn coins by completing links. Here's how to set it up:
-
-### Step 1: Get Your Publisher Link
-
-1. Go to: https://publisher.linkvertise.com/ac/YOUR_ID
-   - Replace `YOUR_ID` with your Linkvertise publisher ID
-2. Copy your publisher link (looks like: `https://publisher.linkvertise.com/ac/1450748`)
-
-### Step 2: Configure in Admin Panel
-
-1. **Log in** as admin
-2. Go to **"Admin Panel"** (shield icon in sidebar)
-3. Click the **"Linkvertise"** tab
-4. In **"Linkvertise Configuration"**:
-   - Paste your **Publisher Link**
-   - Publisher ID will be auto-filled
-   - Set **Default Coins** (e.g., 10)
-   - Set **Cooldown Timer** (seconds between link completions, e.g., 30)
-   - Click **"Save Configuration"**
-
-### Step 3: Add Links
-
-1. In the **"Manage Links"** section, click **"Add New Link"**
-2. Fill in:
-   - **Link Title**: "Complete this link" (or any name)
-   - **Linkvertise URL**: The actual Linkvertise link users will complete
-     - ⚠️ **NOT** your publisher link!
-     - This is the monetized link you create in Linkvertise dashboard
-   - **Coins Reward**: How many coins users earn (e.g., 15)
-   - **Active**: Check this box to make it visible
-3. Click **"Save Link"**
-
-### How to Get Linkvertise URLs
-
-1. Log into your Linkvertise publisher account
-2. Create a new monetized link
-3. Copy the generated Linkvertise URL (looks like: `https://linkvertise.com/123456/...`)
-4. Use that URL when adding links in the admin panel
-
----
-
-## 🎨 Using the Dashboard
-
-### For Regular Users
-
-1. **Sign Up**: Create account or use Discord login
-2. **Earn Coins**: 
-   - Go to "Linkvertise" page
-   - Click "Complete Link" on any link
-   - Complete the Linkvertise steps
-   - Earn coins automatically!
-   - Wait for cooldown timer before completing again
-3. **Buy Resources**:
-   - Go to "Resource Store"
-   - Choose resource type (RAM, CPU, Storage, or Server Slot)
-   - Enter amount and purchase with coins
-   - Resources are added to your pool
-4. **Create Servers**:
-   - Go to "Create Server"
-   - Enter server name
-   - Select game type (egg)
-   - Set resources (RAM, CPU, Storage)
-   - Resources are deducted from your pool
-5. **Manage Servers**: 
-   - Go to "Manage Servers" to see all your servers
-   - Click "Open in Panel" to access Pterodactyl panel
-   - Click "Delete" to remove a server (resources are returned)
-
-### For Administrators
-
-1. **Admin Panel**: Click the shield icon (🛡️) in sidebar
-2. **User Management**: 
-   - View all users
-   - Edit user details
-   - Delete users
-3. **Server Management**: 
-   - See all servers
-   - Delete servers if needed
-4. **Coin Management**: 
-   - Add or remove coins from any user
-   - Search by username
-5. **Linkvertise Management**: 
-   - Configure publisher settings
-   - Add/edit/delete links
-   - Set coin rewards and cooldown timer
-6. **Store Management**: 
-   - Configure resource prices
-   - Set pricing for RAM, CPU, Storage, and Server Slots
-7. **Panel Configuration**: 
-   - Connect to Pterodactyl panel
-   - Manage eggs and allocations
-   - Sync users to Pterodactyl
-
----
-
 ## ❓ Troubleshooting
 
-### "npm is not recognized" or "node is not recognized"
+### "node: command not found"
 
-**Problem**: Node.js is not installed or not in your PATH.
+**Problem:** Node.js isn't installed correctly.
 
-**Solution**:
-1. Reinstall Node.js from https://nodejs.org/
-2. Make sure to check "Add to PATH" during installation
-3. Restart your computer
-4. Try again
+**Solution:**
+1. Go back to Step 3 (Install Node.js)
+2. Make sure you followed all the steps
+3. Try running the installation commands again
+4. After installing, close and reopen your SSH connection
 
 ### "Port 3000 is already in use"
 
-**Problem**: Another program is using port 3000.
+**Problem:** Something else is using port 3000.
 
-**Solution**:
-1. Open `.env` file
-2. Change `PORT=3000` to `PORT=3001` (or any other number)
-3. Restart server
-4. Go to `http://localhost:3001` instead
+**Solution:**
+1. **Option 1:** Change the port in `.env` file:
+   ```bash
+   nano .env
+   ```
+   Change `PORT=3000` to `PORT=3001`
+   Save and restart: `pm2 restart aether-dashboard`
 
-### "Cannot find module" errors
+2. **Option 2:** Find what's using port 3000:
+   ```bash
+   sudo lsof -i :3000
+   ```
+   Stop that process
 
-**Problem**: Dependencies not installed.
+### "Cannot access dashboard from browser"
 
-**Solution**:
-```bash
-npm install
-```
+**Check these things:**
 
-### Database errors
+1. **Is the dashboard running?**
+   ```bash
+   pm2 list
+   ```
+   You should see `aether-dashboard` with status `online`
 
-**Problem**: Database file is corrupted.
+2. **Check the logs:**
+   ```bash
+   pm2 logs aether-dashboard
+   ```
+   Look for errors (red text)
 
-**Solution**:
-1. Stop the server (Ctrl + C)
-2. Delete the `database.db` file
-3. Start server again (it will recreate it)
-4. ⚠️ **Warning**: This will delete all data! Make sure you have a backup!
+3. **Test from the VPS itself:**
+   ```bash
+   curl http://localhost:3000
+   ```
+   If this works, the problem is with firewall or network
 
-### Discord login not working
+4. **Check firewall:**
+   - Make sure you completed Step 8 (Configure Firewall)
+   - Check cloud provider firewall (DigitalOcean, AWS, etc.)
 
-**Checklist**:
-- ✅ Redirect URI matches exactly in Discord Developer Portal
-- ✅ Client ID and Secret are correct in `.env`
-- ✅ No extra spaces in `.env` file
-- ✅ Restarted server after adding Discord credentials
-- ✅ Using correct callback URL (http vs https, localhost vs domain)
+5. **Check if port is open:**
+   - Use an online tool: https://www.yougetsignal.com/tools/open-ports/
+   - Enter your VPS IP and port 3000
 
-### Can't access dashboard
+### "Login redirects back to login page"
 
-**Checklist**:
-- ✅ Server is running (you see "Server running on...")
-- ✅ Using correct URL: `http://localhost:3000` (or your configured port)
-- ✅ No firewall blocking the connection
-- ✅ Browser is not in offline mode
-- ✅ Check server logs for errors
+**This is usually a session/cookie issue:**
 
-### "Admin password doesn't work"
+1. **Check your `.env` file:**
+   ```bash
+   nano .env
+   ```
+   - If using HTTPS, make sure `USE_HTTPS=true`
+   - If using HTTP, make sure `USE_HTTPS=false`
+   - Save and restart: `pm2 restart aether-dashboard`
 
-**Solution**:
-1. Delete `database.db` file
-2. Restart server (creates new admin account)
-3. Login with: `admin` / `admin123`
-4. Change password immediately!
+2. **If using Nginx, check the configuration:**
+   - Make sure all the proxy headers are set (see Nginx setup above)
+   - Test config: `sudo nginx -t`
+   - Reload: `sudo systemctl reload nginx`
 
-### Server creation not working
+3. **Check server logs:**
+   ```bash
+   pm2 logs aether-dashboard
+   ```
+   Look for any errors
 
-**Checklist**:
-- ✅ Pterodactyl panel is connected (check Admin Panel → Panel tab)
-- ✅ Eggs are synced from Pterodactyl
-- ✅ Allocations are synced from Pterodactyl
-- ✅ Default nest and location are configured
-- ✅ User has enough purchased resources
-- ✅ User has available server slots
+### "Linkvertise not giving coins"
 
-### Linkvertise not giving coins
-
-**Checklist**:
+**Checklist:**
 - ✅ Linkvertise configuration is saved in Admin Panel
 - ✅ Link is marked as "Active" in Admin Panel
 - ✅ Cooldown timer has expired (if applicable)
-- ✅ Check server logs for errors
+- ✅ Check server logs: `pm2 logs aether-dashboard`
+
+### "Admin password doesn't work"
+
+**Solution:**
+1. **Delete the database file:**
+   ```bash
+   cd AETHER_PANEL
+   rm database.db
+   ```
+
+2. **Restart the dashboard:**
+   ```bash
+   pm2 restart aether-dashboard
+   ```
+
+3. **This creates a new admin account:**
+   - Username: `admin`
+   - Password: `admin123`
+
+4. **Change the password immediately!**
 
 ---
 
-## 🔒 Security Tips
-
-### For Development:
-1. **Change admin password** immediately after first login
-2. **Use a strong SESSION_SECRET** (random text, at least 20 characters)
-3. **Don't share your `.env` file** - it contains secrets!
-
-### For Production:
-1. **Change admin password** immediately after first login
-2. **Use a very strong SESSION_SECRET** (random text, at least 32 characters)
-3. **Set `NODE_ENV=production`** in `.env`
-4. **Use HTTPS** - Set up SSL certificate (Let's Encrypt is free)
-5. **Keep Node.js updated** - Run `npm update` regularly
-6. **Set up firewall** - Only allow necessary ports (80, 443, SSH)
-7. **Regular backups** - Backup `database.db` regularly
-8. **Don't commit `.env`** - Make sure `.env` is in `.gitignore`
-9. **Use PM2 or systemd** - Keep app running and auto-restart on crash
-10. **Monitor logs** - Check logs regularly for errors or suspicious activity
-
----
-
-## 📁 Project Structure
-
-```
-AETHER_PANEL/
-├── server.js              ← Main program (runs everything)
-├── package.json           ← Lists required libraries
-├── .env                   ← Your settings (passwords, API keys) - NOT in git
-├── database.db           ← All your data (auto-created) - NOT in git
-│
-├── config/                ← Configuration files
-│   ├── database.js        ← Database setup
-│   ├── pterodactyl.js     ← Pterodactyl connection
-│   └── encryption.js      ← Encryption utilities
-│
-├── routes/                ← Page handlers
-│   ├── auth.js            ← Login/signup code
-│   ├── dashboard.js       ← Dashboard pages
-│   ├── servers.js         ← Server management
-│   ├── linkvertise.js     ← Linkvertise system
-│   └── admin.js           ← Admin panel
-│
-├── middleware/            ← Middleware functions
-│   ├── auth.js            ← Authentication checks
-│   └── validation.js      ← Input validation
-│
-├── public/                ← Frontend files
-│   ├── css/               ← Styling (colors, layout)
-│   │   ├── style.css      ← Main styles
-│   │   └── dashboard.css  ← Dashboard-specific styles
-│   └── js/                ← JavaScript (interactivity)
-│       ├── main.js        ← Utility functions
-│       └── dashboard.js   ← Dashboard functions
-│
-└── views/                 ← HTML pages
-    ├── login.html         ← Login page
-    ├── signup.html        ← Signup page
-    ├── dashboard.html     ← Main dashboard
-    ├── profile.html       ← User profile
-    ├── settings.html      ← User settings
-    ├── servers.html       ← Server management
-    ├── resource-store.html ← Resource store
-    ├── linkvertise.html   ← Linkvertise page
-    └── admin.html         ← Admin panel
-```
-
-**You don't need to understand all of this!** Just know:
-- **`.env`** = Your settings (keep secret!)
-- **`database.db`** = Your data (backup regularly!)
-- **`views/`** = The pages users see
-- Everything else = The code that makes it work
-
----
-
-## 🚀 Running Modes
-
-### Development Mode
-
-For testing and development:
-
-```bash
-npm run dev
-```
-
-This uses `nodemon` which automatically restarts the server when you save files. Useful for development!
-
-### Production Mode
-
-For production use:
-
-```bash
-npm start
-```
-
-Or with PM2:
-
-```bash
-pm2 start server.js --name aether-dashboard
-```
-
-Make sure `NODE_ENV=production` is set in your `.env` file!
-
----
-
-## 📚 Technology Stack
-
-This project uses these technologies (don't worry if you don't know them yet!):
-
-- **Node.js**: Runs JavaScript on your computer/server
-- **Express.js**: Makes it easy to create web servers
-- **SQLite**: Simple database (like Excel, but for apps)
-- **Passport.js**: Handles login systems (local and Discord OAuth)
-- **bcrypt**: Securely hashes passwords
-- **HTML/CSS/JavaScript**: Web page languages
-- **Axios**: Makes HTTP requests to Pterodactyl API
-
-**Great for learning!** The code has comments explaining what each part does.
-
----
-
-## 🎯 Production Checklist
-
-Before going live, make sure you've completed:
-
-### Basic Setup
-- [ ] Installed Node.js (v16 or higher)
-- [ ] Ran `npm install` successfully
-- [ ] Created `.env` file with all required settings
-- [ ] Changed default admin password
-- [ ] Tested login and basic functionality
-
-### Configuration
-- [ ] Set `NODE_ENV=production` in `.env`
-- [ ] Set strong `SESSION_SECRET` (32+ characters)
-- [ ] Configured Discord OAuth (if using)
-- [ ] Configured Pterodactyl panel (if using)
-- [ ] Set up Linkvertise (if using)
-
-### Security
-- [ ] Changed admin password
-- [ ] Set up HTTPS/SSL certificate
-- [ ] Configured firewall
-- [ ] Set up regular backups
-- [ ] Verified `.env` is in `.gitignore`
-
-### Deployment
-- [ ] Set up PM2 or systemd for process management
-- [ ] Configured reverse proxy (Nginx) if using domain
-- [ ] Set up monitoring/logging
-- [ ] Tested all features in production environment
-- [ ] Documented any custom configurations
-
----
-
-## 💡 Common Questions
-
-**Q: Do I need to know programming?**  
-A: No! Just follow the setup steps. Programming knowledge helps if you want to customize it.
-
-**Q: Can I use this without Pterodactyl?**  
-A: Yes! The dashboard works without Pterodactyl. Server creation features won't work, but everything else will.
-
-**Q: Is this free?**  
-A: Yes! The code is free to use and modify under MIT license.
-
-**Q: Can I host this online?**  
-A: Yes! You can deploy it to services like:
-- VPS (DigitalOcean, Linode, Vultr)
-- Cloud platforms (AWS, Google Cloud, Azure)
-- Any server with Node.js support
-
-**Q: How do I backup my data?**  
-A: Just copy the `database.db` file! That's your backup. Set up automated backups for production.
-
-**Q: Can I change the design?**  
-A: Yes! Edit files in `public/css/` folder. The main files are `style.css` and `dashboard.css`.
-
-**Q: How do I update the dashboard?**  
-A: 
-1. Backup your `database.db` file
-2. Download the new version
-3. Replace files (except `.env` and `database.db`)
-4. Run `npm install` to update dependencies
-5. Restart the server
-
-**Q: Can multiple users use it at the same time?**  
-A: Yes! The dashboard supports multiple concurrent users.
-
-**Q: What happens if the server crashes?**  
-A: Use PM2 or systemd to automatically restart the application. The database is persistent, so data won't be lost.
-
----
-
-## 🆘 Need Help?
+## 📖 Need More Help?
 
 1. **Check this README** - Most questions are answered here
-2. **Check error messages** - They usually tell you what's wrong
-3. **Check the console** - Look at the terminal/command prompt for errors
-4. **Read the code comments** - The code explains what it does
-5. **Check server logs** - PM2 logs: `pm2 logs aether-dashboard`
+2. **Check server logs** - `pm2 logs aether-dashboard`
+3. **Check error messages** - They usually tell you what's wrong
+4. **Review the troubleshooting section** - Common issues and solutions are listed above
 
 ---
 
 ## 📝 Quick Reference
 
-### Default Admin Credentials
-- **Username**: `admin`
-- **Password**: `admin123`
+### Default Admin Login
+- **Username:** `admin`
+- **Password:** `admin123`
 - ⚠️ **Change immediately after first login!**
-
-### Important Files
-- **`.env`** - Configuration (keep secret!)
-- **`database.db`** - All data (backup regularly!)
 
 ### Important Commands
 ```bash
-npm install          # Install dependencies
-npm start            # Start server (production)
-npm run dev          # Start server (development with auto-reload)
-pm2 start server.js --name aether-dashboard  # Start with PM2
-pm2 logs aether-dashboard  # View logs
+pm2 list                    # See running apps
+pm2 logs aether-dashboard   # See logs
 pm2 restart aether-dashboard  # Restart
+pm2 stop aether-dashboard     # Stop
+pm2 start server.js --name aether-dashboard  # Start
 ```
 
-### Default Ports
-- **Dashboard**: `3000` (configurable in `.env`)
-- **HTTP**: `80` (for Nginx)
-- **HTTPS**: `443` (for Nginx with SSL)
+### Important Files
+- **`.env`** - Your configuration (keep secret!)
+- **`database.db`** - All your data (backup regularly!)
 
 ---
 
-## 📝 Summary
+## 📝 Summary - Quick Start Checklist
 
-**To get started:**
-1. Install Node.js (v16+)
-2. Run `npm install`
-3. Create `.env` file with basic settings
-4. Run `npm start`
-5. Go to `http://localhost:3000`
-6. Login as `admin` / `admin123`
-7. Change admin password immediately!
+**To get your dashboard running:**
 
-**For production:**
-1. Complete all setup steps above
-2. Set `NODE_ENV=production` in `.env`
-3. Use PM2 or systemd to run the app
-4. Set up Nginx reverse proxy (optional)
-5. Set up SSL certificate (recommended)
-6. Configure firewall
-7. Set up regular backups
+- [ ] Connected to VPS via SSH
+- [ ] Updated system (`sudo apt update && sudo apt upgrade -y`)
+- [ ] Installed Node.js (checked with `node --version`)
+- [ ] Uploaded/cloned dashboard code
+- [ ] Installed dependencies (`npm install`)
+- [ ] Created `.env` file with configuration
+- [ ] Started with PM2 (`pm2 start server.js --name aether-dashboard`)
+- [ ] Configured firewall
+- [ ] Can access dashboard in browser
+- [ ] Changed admin password
+- [ ] Configured Linkvertise for revenue
 
-**That's it!** 🎉
+**That's it!** 🎉 Your free hosting revenue platform is ready!
 
 ---
 
@@ -886,6 +1125,6 @@ MIT License - Feel free to use, modify, and distribute!
 
 ---
 
-**Made with ❤️ for beginners. Happy hosting!** 🚀
+**Made with ❤️ for free hosting providers. Start earning revenue today!** 🚀💰
 
 **Version 1.0.0** - Production Ready ✅

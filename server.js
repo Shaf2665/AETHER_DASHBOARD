@@ -16,6 +16,11 @@ const DiscordStrategy = require('passport-discord').Strategy;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy - Required when behind Nginx/reverse proxy (production)
+// This allows Express to correctly handle X-Forwarded-* headers
+// Works in both development and production (harmless if no proxy)
+app.set('trust proxy', 1);
+
 // Middleware setup
 // This allows us to parse form data and JSON
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -28,9 +33,11 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
+        // Only set secure flag when explicitly using HTTPS (via USE_HTTPS env var)
+        // This allows HTTP in development and HTTPS in production
+        secure: process.env.USE_HTTPS === 'true',
         httpOnly: true, // Prevent XSS access to cookies
-        sameSite: 'strict', // CSRF protection
+        sameSite: 'lax', // More compatible than 'strict' - works with redirects and cross-site scenarios
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     }
 }));
@@ -198,8 +205,11 @@ app.use((req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
-    console.log(`🚀 Aether Dashboard is running on http://localhost:${PORT}`);
+// Bind to 0.0.0.0 to allow connections from all network interfaces
+// This works for both development (localhost) and production (external IP)
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Aether Dashboard is running on http://0.0.0.0:${PORT}`);
+    console.log(`📝 Access locally: http://localhost:${PORT}`);
     console.log(`📝 Make sure to set up your .env file with required configuration`);
 });
 
