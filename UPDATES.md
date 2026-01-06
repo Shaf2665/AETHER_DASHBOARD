@@ -146,9 +146,42 @@ pm2 restart aether-dashboard
 
 ## 📝 Version Changelog
 
-### Version 1.2 (Latest)
+### Version 1.2.1 (Latest)
 
 **Release Date:** Current
+
+**Bug Fixes:**
+- 🐛 **Fixed [object Object] Error Display** - Error messages now display properly instead of showing `[object Object]`
+  - Improved `showNotification` function to handle object errors
+  - Enhanced error message extraction in server creation
+  - Better error handling for all API responses
+
+**Improvements:**
+- 🛡️ **Global Error Handlers** - Added handlers for unhandled promise rejections and exceptions
+  - Prevents server crashes from unhandled errors
+  - Better error logging with stack traces
+- ⏱️ **Request Timeout Protection** - Added 60-second timeout for all requests
+  - Prevents hanging requests that cause 502 errors
+  - Better error messages for timeout scenarios
+- 🏥 **Health Check Endpoint** - Added `/health` endpoint for monitoring
+  - Useful for Cloudflare health checks
+  - Returns server status and uptime
+- 🔌 **Pterodactyl API Timeouts** - Added timeout protection for Pterodactyl API calls
+  - 30-second default timeout for regular API calls
+  - 60-second timeout for server creation (can take longer)
+  - Better error messages for timeout scenarios
+
+**How to Update:**
+- If using GitHub: `git pull origin main && npm install && pm2 restart aether-dashboard`
+- If using SFTP: Download latest version, replace files (keep database.db and .env), run `npm install`, restart dashboard
+
+**Note:** This is a stability and bug fix release. No database migrations needed!
+
+---
+
+### Version 1.2
+
+**Release Date:** Previous
 
 **New Features:**
 - ✅ **Logo Shape Customization** - Choose from 6 different logo shapes!
@@ -371,7 +404,7 @@ If you encounter issues during updates:
 
 ---
 
-**Last Updated:** Version 1.2
+**Last Updated:** Version 1.2.1
 
 **Made with ❤️ for free hosting providers**
 
