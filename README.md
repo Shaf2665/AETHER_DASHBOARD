@@ -5,6 +5,7 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 **Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
 **Version:** 1.2.1
+
 **Status:** Production Ready ✅
 
 **📦 Want to update?** See the [Update Guide](UPDATES.md) for instructions on how to update to the latest version!
