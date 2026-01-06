@@ -3,10 +3,25 @@
 
 // Show notification message
 function showNotification(message, type = 'info') {
+    // Convert message to string if it's an object
+    let messageText = message;
+    if (typeof message === 'object' && message !== null) {
+        // Try to extract a meaningful message from the object
+        messageText = message.detail || 
+                      message.message || 
+                      message.error ||
+                      (message.toString && message.toString() !== '[object Object]' ? message.toString() : 'An error occurred');
+    } else if (message === null || message === undefined) {
+        messageText = 'An error occurred';
+    }
+    
+    // Ensure it's a string
+    messageText = String(messageText);
+    
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    notification.textContent = message;
+    notification.textContent = messageText;
     notification.style.cssText = `
         position: fixed;
         top: 20px;

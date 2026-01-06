@@ -292,13 +292,24 @@ router.post('/api/create', requireAuth, async (req, res) => {
                     }
                 };
                 
+                // Create server in Pterodactyl with timeout protection
+                console.log(`Creating server "${name}" in Pterodactyl for user ${req.session.user.id}...`);
                 const createResult = await pterodactyl.createServer(serverData);
                 
                 if (!createResult.success) {
-                    return res.status(500).json({ 
-                        success: false, 
-                        message: createResult.error || 'Failed to create server in Pterodactyl' 
-                    });
+                    const errorMessage = createResult.error?.detail || 
+                                       createResult.error?.message || 
+                                       (typeof createResult.error === 'string' ? createResult.error : 'Failed to create server in Pterodactyl');
+                    
+                    console.error('Pterodactyl server creation failed:', errorMessage);
+                    
+                    if (!res.headersSent) {
+                        return res.status(500).json({ 
+                            success: false, 
+                            message: `Failed to create server: ${errorMessage}` 
+                        });
+                    }
+                    return;
                 }
                 
                 pterodactyl_id = createResult.data?.id || createResult.data?.attributes?.id;
@@ -328,26 +339,36 @@ router.post('/api/create', requireAuth, async (req, res) => {
                     [req.session.user.id, pterodactyl_id, name, ram, cpu, storage, publicAddress]
                 );
                 
-                res.json({ 
-                    success: true, 
-                    message: 'Server created successfully',
-                    server: {
-                        id: result.lastID,
-                        name,
-                        ram,
-                        cpu,
-                        storage,
-                        pterodactyl_id,
-                        public_address: publicAddress
-                    }
-                });
+                console.log(`Server created successfully: ID ${result.lastID}, Pterodactyl ID ${pterodactyl_id}`);
+                
+                if (!res.headersSent) {
+                    res.json({ 
+                        success: true, 
+                        message: 'Server created successfully',
+                        server: {
+                            id: result.lastID,
+                            name,
+                            ram,
+                            cpu,
+                            storage,
+                            pterodactyl_id,
+                            public_address: publicAddress
+                        }
+                    });
+                }
                 return;
             } catch (error) {
                 console.error('Error creating server in Pterodactyl:', error);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: `Error creating server in Pterodactyl: ${error.message}` 
-                });
+                console.error('Error stack:', error.stack);
+                
+                if (!res.headersSent) {
+                    const errorMessage = error.message || 'Unknown error occurred';
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: `Error creating server: ${errorMessage}` 
+                    });
+                }
+                return;
             }
         }
         
@@ -358,24 +379,31 @@ router.post('/api/create', requireAuth, async (req, res) => {
             [req.session.user.id, pterodactyl_id, name, ram, cpu, storage]
         );
         
-        res.json({ 
-            success: true, 
-            message: 'Server created successfully',
-            server: {
-                id: result.lastID,
-                name,
-                ram,
-                cpu,
-                storage,
-                pterodactyl_id
-            }
-        });
+        if (!res.headersSent) {
+            res.json({ 
+                success: true, 
+                message: 'Server created successfully',
+                server: {
+                    id: result.lastID,
+                    name,
+                    ram,
+                    cpu,
+                    storage,
+                    pterodactyl_id
+                }
+            });
+        }
     } catch (error) {
         console.error('Error creating server:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error creating server' 
-        });
+        console.error('Error stack:', error.stack);
+        
+        if (!res.headersSent) {
+            const errorMessage = error.message || 'Unknown error occurred';
+            res.status(500).json({ 
+                success: false, 
+                message: `Error creating server: ${errorMessage}` 
+            });
+        }
     }
 });
 

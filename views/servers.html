@@ -461,7 +461,18 @@
                     body: JSON.stringify(serverData)
                 });
                 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    // If response is not valid JSON
+                    console.error('Invalid JSON response:', jsonError);
+                    showNotification('Server error: Invalid response from server', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                    return;
+                }
+                
                 if (data.success) {
                     showNotification('Server created successfully!', 'success');
                     showServerList();
@@ -469,10 +480,36 @@
                     await loadServerSlotInfo(); // Refresh slot count
                     await loadResourceDisplay(); // Refresh resource display
                 } else {
-                    showNotification(data.message || 'Failed to create server', 'error');
+                    // Extract error message properly - handle both string and object
+                    let errorMessage = 'Failed to create server';
+                    
+                    if (data.message) {
+                        if (typeof data.message === 'string') {
+                            errorMessage = data.message;
+                        } else if (typeof data.message === 'object') {
+                            // Handle object error messages
+                            errorMessage = data.message.detail || 
+                                         data.message.message || 
+                                         data.message.error ||
+                                         'Failed to create server';
+                        }
+                    } else if (data.error) {
+                        // Handle error field
+                        if (typeof data.error === 'string') {
+                            errorMessage = data.error;
+                        } else if (typeof data.error === 'object') {
+                            errorMessage = data.error.detail || 
+                                         data.error.message || 
+                                         'Failed to create server';
+                        }
+                    }
+                    
+                    showNotification(errorMessage, 'error');
                 }
             } catch (error) {
-                showNotification('An error occurred', 'error');
+                // Handle network errors or other exceptions
+                const errorMessage = error.message || 'An error occurred while creating the server';
+                showNotification(errorMessage, 'error');
                 console.error('Create server error:', error);
             } finally {
                 submitBtn.disabled = false;

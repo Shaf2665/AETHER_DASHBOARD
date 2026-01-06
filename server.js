@@ -4,6 +4,19 @@
 // Load environment variables from .env file
 require('dotenv').config();
 
+// Global error handlers - catch unhandled errors to prevent crashes
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️  Unhandled Rejection at:', promise);
+    console.error('⚠️  Reason:', reason);
+    // Don't exit - let PM2 handle restarts if needed
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('⚠️  Uncaught Exception:', error);
+    // Log but don't exit immediately - PM2 will restart if needed
+    // In production, PM2 will handle restarts automatically
+});
+
 // Import required modules
 const express = require('express');
 const path = require('path');
@@ -25,6 +38,20 @@ app.set('trust proxy', 1);
 // This allows us to parse form data and JSON
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+// Request timeout middleware - prevent requests from hanging indefinitely
+app.use((req, res, next) => {
+    // Set timeout to 60 seconds for all requests
+    req.setTimeout(60000, () => {
+        if (!res.headersSent) {
+            res.status(503).json({ 
+                success: false, 
+                message: 'Request timeout. Please try again.' 
+            });
+        }
+    });
+    next();
+});
 
 // Session configuration
 // Sessions help us remember if a user is logged in
@@ -181,6 +208,15 @@ app.use('/servers', serverRoutes);
 app.use('/linkvertise', linkvertiseRoutes);
 app.use('/admin', adminRoutes);
 
+// Health check endpoint - for monitoring and Cloudflare health checks
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
 // Home route - redirect to login if not authenticated, otherwise to dashboard
 app.get('/', (req, res) => {
     if (req.session.user) {
@@ -193,10 +229,15 @@ app.get('/', (req, res) => {
 // Error handling middleware (should be last)
 app.use((err, req, res, next) => {
     console.error('Error:', err);
-    res.status(500).json({ 
-        success: false, 
-        message: 'An internal error occurred' 
-    });
+    console.error('Error stack:', err.stack);
+    
+    // Don't send response if headers already sent
+    if (!res.headersSent) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'An internal error occurred' 
+        });
+    }
 });
 
 // 404 handler

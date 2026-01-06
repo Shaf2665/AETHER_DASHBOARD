@@ -96,12 +96,13 @@ async function updateAxiosConfig() {
             'Authorization': config.apiKey ? `Bearer ${config.apiKey}` : '',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-        }
+        },
+        timeout: 30000 // 30 second timeout for all Pterodactyl API requests
     });
 }
 
-// Helper function to make API requests
-async function makeRequest(method, endpoint, data = null) {
+// Helper function to make API requests with timeout protection
+async function makeRequest(method, endpoint, data = null, timeoutMs = 30000) {
     try {
         // Update axios config with latest settings
         await updateAxiosConfig();
@@ -112,18 +113,39 @@ async function makeRequest(method, endpoint, data = null) {
             throw new Error('Pterodactyl configuration is missing. Please configure it in Admin Panel → Panel or set PTERODACTYL_URL and PTERODACTYL_API_KEY in .env file');
         }
 
-        const config = {
+        // Create a new axios instance with custom timeout for this request
+        const requestAPI = axios.create({
+            baseURL: pterodactylConfig.url ? `${pterodactylConfig.url}/api` : '',
+            headers: {
+                'Authorization': pterodactylConfig.apiKey ? `Bearer ${pterodactylConfig.apiKey}` : '',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            timeout: timeoutMs
+        });
+
+        const requestConfig = {
             method: method,
             url: endpoint,
             ...(data && { data })
         };
 
-        const response = await pterodactylAPI(config);
+        const response = await requestAPI(requestConfig);
+
         return {
             success: true,
             data: response.data
         };
     } catch (error) {
+        // Handle timeout errors specifically
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            console.error('Pterodactyl API Timeout:', endpoint, `(timeout: ${timeoutMs}ms)`);
+            return {
+                success: false,
+                error: 'Request timeout: Pterodactyl API did not respond in time. Please try again.'
+            };
+        }
+        
         console.error('Pterodactyl API Error:', error.response?.data || error.message);
         return {
             success: false,
@@ -261,11 +283,12 @@ async function getServerResources(serverId) {
     return await makeRequest('GET', `/application/servers/${serverId}/resources`);
 }
 
-// Create a new server
+// Create a new server (with extended timeout for server creation)
 async function createServer(serverData) {
     // serverData should include:
     // - name, user, egg, docker_image, startup, environment, limits, feature_limits, allocation
-    return await makeRequest('POST', '/application/servers', serverData);
+    // Server creation can take longer, so use 60 second timeout
+    return await makeRequest('POST', '/application/servers', serverData, 60000);
 }
 
 // Update server resources
