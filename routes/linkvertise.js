@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const { query, get, run } = require('../config/database');
+const { query, get, run, transaction } = require('../config/database');
 
 // Middleware to check if user is logged in
 const requireAuth = (req, res, next) => {
@@ -38,11 +38,18 @@ router.get('/api/links', requireAuth, async (req, res) => {
         );
         
         // Create a map of link_id to last completion time
+        // BUGFIX: Store both integer and string keys for consistent lookup
         const completionMap = {};
         lastCompletions.forEach(completion => {
-            if (!completionMap[completion.link_id] || 
-                new Date(completion.completed_at) > new Date(completionMap[completion.link_id])) {
-                completionMap[completion.link_id] = completion.completed_at;
+            const linkIdInt = parseInt(completion.link_id);
+            const linkIdStr = linkIdInt.toString();
+            const existingTime = completionMap[linkIdStr] || completionMap[linkIdInt];
+            
+            if (!existingTime || 
+                new Date(completion.completed_at) > new Date(existingTime)) {
+                // Store with both keys for backward compatibility
+                completionMap[linkIdStr] = completion.completed_at;
+                completionMap[linkIdInt] = completion.completed_at;
             }
         });
         
@@ -50,22 +57,32 @@ router.get('/api/links', requireAuth, async (req, res) => {
         // Use Date.now() for consistent UTC milliseconds comparison
         const nowMs = Date.now();
         const linksWithStatus = activeLinks.map(link => {
-            const linkId = link.id.toString();
-            const lastCompletion = completionMap[linkId];
+            // BUGFIX: Normalize link ID to integer for consistent comparison
+            const linkIdInt = parseInt(link.id);
+            const linkIdStr = linkIdInt.toString();
+            // Check both string and integer keys in completion map for backward compatibility
+            const lastCompletion = completionMap[linkIdStr] || completionMap[linkIdInt];
             let cooldownRemaining = 0;
             let isOnCooldown = false;
             
             if (lastCompletion) {
-                // SQLite CURRENT_TIMESTAMP stores in UTC as 'YYYY-MM-DD HH:MM:SS' format
-                // Parse it as UTC by appending 'Z' to the ISO-formatted string
-                const lastCompletionTime = new Date(lastCompletion.replace(' ', 'T') + 'Z').getTime();
-                const secondsSinceCompletion = Math.floor((nowMs - lastCompletionTime) / 1000);
-                cooldownRemaining = Math.max(0, cooldownSeconds - secondsSinceCompletion);
-                isOnCooldown = cooldownRemaining > 0;
+                try {
+                    // SQLite CURRENT_TIMESTAMP stores in UTC as 'YYYY-MM-DD HH:MM:SS' format
+                    // Parse it as UTC by appending 'Z' to the ISO-formatted string
+                    const lastCompletionTime = new Date(lastCompletion.replace(' ', 'T') + 'Z').getTime();
+                    const secondsSinceCompletion = Math.floor((nowMs - lastCompletionTime) / 1000);
+                    cooldownRemaining = Math.max(0, cooldownSeconds - secondsSinceCompletion);
+                    isOnCooldown = cooldownRemaining > 0;
+                } catch (timestampError) {
+                    console.error('Error parsing completion timestamp for link', linkIdInt, ':', timestampError);
+                    // If parsing fails, assume no cooldown
+                    cooldownRemaining = 0;
+                    isOnCooldown = false;
+                }
             }
             
             return {
-                id: linkId,
+                id: linkIdStr,
                 title: link.title,
                 url: link.url,
                 coins_earned: link.coins_earned,
@@ -98,49 +115,86 @@ router.post('/api/complete', requireAuth, async (req, res) => {
             });
         }
         
+        // BUGFIX: Normalize link_id to integer for consistent comparison
+        const linkIdInt = parseInt(link_id);
+        if (isNaN(linkIdInt) || linkIdInt <= 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid link ID format' 
+            });
+        }
+        
+        // BUGFIX: Validate link exists and is active before allowing completion
+        const link = await get(
+            'SELECT id, coins_earned, is_active FROM linkvertise_links WHERE id = ?',
+            [linkIdInt]
+        );
+        
+        if (!link) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Link not found' 
+            });
+        }
+        
+        if (!link.is_active) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'This link is not currently active' 
+            });
+        }
+        
         // Get cooldown configuration
         const config = await get('SELECT cooldown_seconds FROM linkvertise_config ORDER BY id DESC LIMIT 1');
         const cooldownSeconds = (config && config.cooldown_seconds) ? config.cooldown_seconds : 30;
         
-        // Check last completion time for this user and link
+        // Check last completion time for this user and link (use normalized integer)
         const lastCompletion = await get(
             'SELECT completed_at FROM linkvertise_completions WHERE user_id = ? AND link_id = ? ORDER BY completed_at DESC LIMIT 1',
-            [req.session.user.id, link_id]
+            [req.session.user.id, linkIdInt]
         );
         
         if (lastCompletion) {
             // BUGFIX #12: Parse SQLite timestamp correctly to avoid timezone issues
             // SQLite CURRENT_TIMESTAMP stores in UTC, use Date.now() for consistent UTC comparison
-            const lastCompletionTime = new Date(lastCompletion.completed_at.replace(' ', 'T') + 'Z').getTime();
-            const nowMs = Date.now();
-            const secondsSinceCompletion = Math.floor((nowMs - lastCompletionTime) / 1000);
-            const remainingSeconds = cooldownSeconds - secondsSinceCompletion;
-            
-            if (remainingSeconds > 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Please wait ${remainingSeconds} more second${remainingSeconds !== 1 ? 's' : ''} before completing this link again.`,
-                    cooldown_remaining: remainingSeconds
-                });
+            try {
+                const lastCompletionTime = new Date(lastCompletion.completed_at.replace(' ', 'T') + 'Z').getTime();
+                const nowMs = Date.now();
+                const secondsSinceCompletion = Math.floor((nowMs - lastCompletionTime) / 1000);
+                const remainingSeconds = cooldownSeconds - secondsSinceCompletion;
+                
+                if (remainingSeconds > 0) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Please wait ${remainingSeconds} more second${remainingSeconds !== 1 ? 's' : ''} before completing this link again.`,
+                        cooldown_remaining: remainingSeconds
+                    });
+                }
+            } catch (timestampError) {
+                console.error('Error parsing completion timestamp:', timestampError);
+                // If timestamp parsing fails, allow completion but log the error
             }
         }
         
-        // Get coins earned from database
-        const coinsEarned = await getCoinsForLink(link_id);
+        // Use coins from validated link (already fetched above)
+        const coinsEarned = link.coins_earned || 10;
         
-        // Record completion
-        await run(
-            'INSERT INTO linkvertise_completions (user_id, link_id, coins_earned) VALUES (?, ?, ?)',
-            [req.session.user.id, link_id, coinsEarned]
-        );
+        // BUGFIX: Wrap completion recording and coin addition in a transaction for atomicity
+        await transaction(async () => {
+            // Record completion
+            await run(
+                'INSERT INTO linkvertise_completions (user_id, link_id, coins_earned) VALUES (?, ?, ?)',
+                [req.session.user.id, linkIdInt, coinsEarned]
+            );
+            
+            // Add coins to user's balance
+            await run(
+                'UPDATE users SET coins = coins + ? WHERE id = ?',
+                [coinsEarned, req.session.user.id]
+            );
+        });
         
-        // Add coins to user's balance
-        await run(
-            'UPDATE users SET coins = coins + ? WHERE id = ?',
-            [coinsEarned, req.session.user.id]
-        );
-        
-        // Update session
+        // Update session (only after successful transaction)
         req.session.user.coins = (req.session.user.coins || 0) + coinsEarned;
         
         res.json({ 

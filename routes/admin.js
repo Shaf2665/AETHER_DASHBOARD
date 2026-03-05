@@ -76,9 +76,19 @@ router.get('/', requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, '../views/admin.html'));
 });
 
-// Admin settings page
+// Admin settings page (redirects to themes)
 router.get('/settings', requireAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, '../views/admin-settings.html'));
+    res.redirect('/admin/settings/themes');
+});
+
+// Admin themes page
+router.get('/settings/themes', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/admin-themes.html'));
+});
+
+// Admin branding page
+router.get('/settings/branding', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/admin-branding.html'));
 });
 
 // API endpoint to get system statistics
@@ -571,7 +581,7 @@ router.get('/api/panel/config', requireAdmin, async (req, res) => {
         const { get } = require('../config/database');
         const { decrypt } = require('../config/encryption');
         
-        const config = await get('SELECT panel_url, api_key, last_connected_at FROM pterodactyl_config ORDER BY id DESC LIMIT 1');
+        const config = await get('SELECT panel_url, api_key, client_api_key, last_connected_at FROM pterodactyl_config ORDER BY id DESC LIMIT 1');
         
         if (config && config.panel_url && config.api_key) {
             // Decrypt API key for display
@@ -581,6 +591,7 @@ router.get('/api/panel/config', requireAdmin, async (req, res) => {
                 config: {
                     panel_url: config.panel_url,
                     api_key: decryptedKey,
+                    client_api_key: config.client_api_key || process.env.PTERODACTYL_CLIENT_API_KEY || '',
                     last_connected_at: config.last_connected_at
                 }
             });
@@ -591,6 +602,7 @@ router.get('/api/panel/config', requireAdmin, async (req, res) => {
                 config: {
                     panel_url: process.env.PTERODACTYL_URL || '',
                     api_key: process.env.PTERODACTYL_API_KEY || '',
+                    client_api_key: process.env.PTERODACTYL_CLIENT_API_KEY || '',
                     last_connected_at: null
                 }
             });
@@ -603,12 +615,12 @@ router.get('/api/panel/config', requireAdmin, async (req, res) => {
 
 router.post('/api/panel/test', requireAdmin, async (req, res) => {
     try {
-        const { panel_url, api_key } = req.body;
+        const { panel_url, api_key, client_api_key } = req.body;
         
-        if (!panel_url || !api_key) {
+        if (!panel_url || !api_key || !client_api_key) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Panel URL and API key are required' 
+                message: 'Panel URL, application API key, and client API key are required' 
             });
         }
         
@@ -622,11 +634,38 @@ router.post('/api/panel/test', requireAdmin, async (req, res) => {
             });
         }
         
-        // Test connection
+        // Test connection for application API key
         const { testConnection } = require('../config/pterodactyl');
         const result = await testConnection(panel_url, api_key);
         
-        res.json(result);
+        if (!result.success) {
+            return res.json(result);
+        }
+
+        // Test client API key by calling /client/account
+        const axios = require('axios');
+        try {
+            const clientTest = await axios.get(`${panel_url.replace(/\/+$/,'')}/api/client/account`, {
+                headers: {
+                    'Authorization': `Bearer ${client_api_key}`,
+                    'Accept': 'application/json'
+                },
+                timeout: 10000
+            });
+            if (clientTest.status !== 200) {
+                return res.json({
+                    success: false,
+                    message: 'Application API key is valid, but Client API key test failed.'
+                });
+            }
+        } catch (e) {
+            return res.json({
+                success: false,
+                message: 'Application API key is valid, but Client API key test failed: ' + (e.response?.data?.message || e.message)
+            });
+        }
+        
+        res.json({ success: true, message: 'Connection successful! Both application and client API keys are valid.' });
     } catch (error) {
         console.error('Error testing panel connection:', error);
         res.status(500).json({ 
@@ -638,12 +677,12 @@ router.post('/api/panel/test', requireAdmin, async (req, res) => {
 
 router.post('/api/panel/connect', requireAdmin, async (req, res) => {
     try {
-        const { panel_url, api_key } = req.body;
+        const { panel_url, api_key, client_api_key } = req.body;
         
-        if (!panel_url || !api_key) {
+        if (!panel_url || !api_key || !client_api_key) {
             return res.status(400).json({ 
                 success: false, 
-                message: 'Panel URL and API key are required' 
+                message: 'Panel URL, application API key, and client API key are required' 
             });
         }
         
@@ -699,14 +738,14 @@ router.post('/api/panel/connect', requireAdmin, async (req, res) => {
         if (existing) {
             // Update existing config
             await run(
-                'UPDATE pterodactyl_config SET panel_url = ?, api_key = ?, last_connected_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [panel_url, encryptedKey, now, existing.id]
+                'UPDATE pterodactyl_config SET panel_url = ?, api_key = ?, client_api_key = ?, last_connected_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [panel_url, encryptedKey, client_api_key, now, existing.id]
             );
         } else {
             // Create new config
             await run(
-                'INSERT INTO pterodactyl_config (panel_url, api_key, last_connected_at) VALUES (?, ?, ?)',
-                [panel_url, encryptedKey, now]
+                'INSERT INTO pterodactyl_config (panel_url, api_key, client_api_key, last_connected_at) VALUES (?, ?, ?, ?)',
+                [panel_url, encryptedKey, client_api_key, now]
             );
         }
         
@@ -856,6 +895,234 @@ router.post('/api/panel/sync-users', requireAdmin, async (req, res) => {
     }
 });
 
+// Import users FROM Pterodactyl panel TO dashboard (with SSE progress)
+router.get('/api/panel/import-users', requireAdmin, async (req, res) => {
+    // #region agent log
+    console.log('[DEBUG] Import endpoint called');
+    fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:start',message:'Import endpoint called',data:{},timestamp:Date.now(),hypothesisId:'B'})}).catch((e)=>console.error('[DEBUG] Fetch error:',e));
+    // #endregion
+    
+    // Set up Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+    
+    // Helper function to send SSE messages
+    const sendProgress = (percent, message, status = 'progress') => {
+        try {
+            const sseData = `data: ${JSON.stringify({ percent, message, status })}\n\n`;
+            console.log('[DEBUG] Sending SSE:', { percent, status, message: message.substring(0, 50) });
+            res.write(sseData);
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:sendProgress',message:'SSE sent',data:{percent,status,msgPreview:message.substring(0,50)},timestamp:Date.now(),hypothesisId:'B,E'})}).catch((e)=>console.error('[DEBUG] Fetch error:',e));
+            // #endregion
+        } catch (writeError) {
+            console.error('[DEBUG] Error writing SSE data:', writeError);
+            console.error('[DEBUG] Write error details:', { message: writeError.message, code: writeError.code });
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:sendProgress:error',message:'SSE write failed',data:{error:writeError.message},timestamp:Date.now(),hypothesisId:'B'})}).catch((e)=>console.error('[DEBUG] Fetch error:',e));
+            // #endregion
+        }
+    };
+    
+    // Handle client disconnect
+    req.on('close', () => {
+        console.log('[Import Users] Client disconnected');
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:clientClose',message:'Client disconnected',data:{},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        if (!res.headersSent) {
+            res.end();
+        }
+    });
+    
+    try {
+        const pterodactyl = require('../config/pterodactyl');
+        const { get, run, query } = require('../config/database');
+        const bcrypt = require('bcrypt');
+        
+        // Check if Pterodactyl is configured
+        const isConfigured = await pterodactyl.isConfigured();
+        if (!isConfigured) {
+            sendProgress(0, 'Pterodactyl panel is not configured', 'error');
+            return res.end();
+        }
+        
+        console.log('[DEBUG] Sending initial progress message');
+        sendProgress(5, 'Fetching users from Pterodactyl panel...');
+        
+        // Fetch all users from Pterodactyl with pagination
+        let pterodactylUsers;
+        try {
+            console.log('[DEBUG] Calling getAllUsersPaginated()');
+            pterodactylUsers = await pterodactyl.getAllUsersPaginated();
+            console.log('[DEBUG] getAllUsersPaginated() returned:', pterodactylUsers?.length || 0, 'users');
+        } catch (fetchError) {
+            console.error('[DEBUG] Error fetching users:', fetchError);
+            console.error('[DEBUG] Error stack:', fetchError.stack);
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:fetchError',message:'Failed to fetch users',data:{error:fetchError.message},timestamp:Date.now(),hypothesisId:'A'})}).catch((e)=>console.error('[DEBUG] Fetch error:',e));
+            // #endregion
+            sendProgress(0, `Failed to fetch users: ${fetchError.message}`, 'error');
+            return res.end();
+        }
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:usersFetched',message:'Users fetched from Pterodactyl',data:{count:pterodactylUsers?.length||0,isArray:Array.isArray(pterodactylUsers)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
+        if (!pterodactylUsers || pterodactylUsers.length === 0) {
+            sendProgress(100, 'No users found in Pterodactyl panel', 'complete');
+            return res.end();
+        }
+        
+        sendProgress(10, `Found ${pterodactylUsers.length} users in Pterodactyl panel`);
+        
+        const totalUsers = pterodactylUsers.length;
+        let imported = 0;
+        let linked = 0;
+        let skipped = 0;
+        let failed = 0;
+        
+        // Process each user
+        for (let i = 0; i < pterodactylUsers.length; i++) {
+            // Check if client disconnected
+            if (req.closed || req.destroyed) {
+                console.log('[Import Users] Request closed by client');
+                return res.end();
+            }
+            
+            // Extract user data - handle both direct and attributes structure
+            const userObj = pterodactylUsers[i];
+            const pteroUser = userObj.attributes || userObj;
+            const percent = Math.round(10 + ((i + 1) / totalUsers) * 85); // Progress from 10% to 95%
+            
+            // #region agent log
+            if (i === 0) {
+                fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:firstUser',message:'First user structure',data:{userObjKeys:Object.keys(userObj),pteroUserKeys:Object.keys(pteroUser),email:pteroUser.email,id:pteroUser.id,userObjId:userObj.id,hasAttributes:!!userObj.attributes},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+            }
+            // #endregion
+            
+            // Validate user data
+            if (!pteroUser || !pteroUser.email) {
+                failed++;
+                sendProgress(percent, `Skipped: Invalid user data (missing email)`);
+                continue;
+            }
+            
+            try {
+                // Check if user already exists in dashboard by email
+                const existingUser = await get(
+                    'SELECT id, pterodactyl_user_id, username FROM users WHERE LOWER(email) = LOWER(?)',
+                    [pteroUser.email]
+                );
+                
+                // Get Pterodactyl user ID (can be in id or attributes.id)
+                const pterodactylUserId = userObj.id || pteroUser.id;
+                
+                if (!pterodactylUserId) {
+                    failed++;
+                    sendProgress(percent, `Failed: ${pteroUser.email} - Missing Pterodactyl user ID`);
+                    continue;
+                }
+                
+                if (existingUser) {
+                    // User exists in dashboard
+                    if (existingUser.pterodactyl_user_id) {
+                        // Already linked - skip
+                        skipped++;
+                        sendProgress(percent, `Skipped: ${pteroUser.email} (already linked)`);
+                    } else {
+                        // Link existing user to Pterodactyl
+                        await run(
+                            'UPDATE users SET pterodactyl_user_id = ? WHERE id = ?',
+                            [pterodactylUserId, existingUser.id]
+                        );
+                        linked++;
+                        sendProgress(percent, `Linked: ${pteroUser.email} to existing dashboard user`);
+                    }
+                } else {
+                    // Create new dashboard user
+                    // Generate a secure random password (user can reset via Discord OAuth or admin)
+                    const randomPassword = require('crypto').randomBytes(16).toString('hex');
+                    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+                    
+                    // Use Pterodactyl username or first_name as dashboard username
+                    let username = pteroUser.username || pteroUser.first_name || pteroUser.email.split('@')[0];
+                    
+                    // Sanitize username (remove special characters, limit length)
+                    username = username.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 30);
+                    if (!username) {
+                        username = `user_${pterodactylUserId}`;
+                    }
+                    
+                    // Ensure username is unique
+                    const existingUsername = await get(
+                        'SELECT id FROM users WHERE LOWER(username) = LOWER(?)',
+                        [username]
+                    );
+                    if (existingUsername) {
+                        // Append Pterodactyl user ID to make unique
+                        username = `${username}_${pterodactylUserId}`.substring(0, 50);
+                    }
+                    
+                    // Insert new user
+                    await run(
+                        `INSERT INTO users (username, email, password, pterodactyl_user_id, is_admin, coins, 
+                         purchased_ram, purchased_cpu, purchased_storage, server_slots, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+                        [
+                            username,
+                            pteroUser.email,
+                            hashedPassword,
+                            pterodactylUserId,
+                            pteroUser.root_admin ? 1 : 0, // Map Pterodactyl admin to dashboard admin
+                            0, // Starting coins
+                            0, // Starting RAM
+                            0, // Starting CPU
+                            0, // Starting Storage
+                            1  // Starting server slots (default is 1)
+                        ]
+                    );
+                    imported++;
+                    sendProgress(percent, `Imported: ${pteroUser.email} as new user`);
+                }
+            } catch (userError) {
+                console.error(`Error processing user ${pteroUser.email}:`, userError);
+                // #region agent log
+                fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:userError',message:'Error processing user',data:{email:pteroUser.email,error:userError.message,stack:userError.stack?.substring(0,200)},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                failed++;
+                const errorMsg = userError.message || 'Unknown error';
+                sendProgress(percent, `Failed: ${pteroUser.email} - ${errorMsg}`);
+            }
+        }
+        
+        // Send completion message
+        const summary = `Migration complete: ${imported} imported, ${linked} linked, ${skipped} skipped, ${failed} failed`;
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:complete',message:'Import complete',data:{imported,linked,skipped,failed},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        sendProgress(100, summary, 'complete');
+        
+        // Also log to console
+        console.log(`[Import Users] ${summary}`);
+        
+    } catch (error) {
+        console.error('Error importing users from Pterodactyl:', error);
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'admin.js:import-users:mainError',message:'Main catch error',data:{error:error.message,stack:error.stack?.substring(0,200)},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
+        // #endregion
+        const errorMsg = error.message || 'Unknown error occurred';
+        sendProgress(0, `Error: ${errorMsg}`, 'error');
+    } finally {
+        if (!res.headersSent || !res.closed) {
+            res.end();
+        }
+    }
+});
+
 // Disconnect Pterodactyl panel - removes all Pterodactyl-related data
 router.post('/api/panel/disconnect', requireAdmin, async (req, res) => {
     try {
@@ -881,6 +1148,25 @@ router.post('/api/panel/disconnect', requireAdmin, async (req, res) => {
         // Delete all servers that were created through Pterodactyl
         // Resources are automatically "returned" because used resources are calculated dynamically
         await run('DELETE FROM servers WHERE pterodactyl_id IS NOT NULL');
+
+        // Clean up Pterodactyl-linked users
+        // Strategy:
+        // - Preserve at least one admin account to avoid lockout.
+        // - Prefer to delete users that were imported from Pterodactyl (have a pterodactyl_user_id),
+        //   including admin accounts, as long as there is at least one non-imported admin left.
+        const adminUsers = await query('SELECT id, pterodactyl_user_id FROM users WHERE is_admin = 1');
+        const importedAdmins = adminUsers.filter(u => u.pterodactyl_user_id !== null && u.pterodactyl_user_id !== undefined);
+        const nonImportedAdmins = adminUsers.filter(u => !u.pterodactyl_user_id);
+
+        if (nonImportedAdmins.length === 0) {
+            // All admins are imported from Pterodactyl – to avoid lockout, keep them but clear linkage
+            await run('UPDATE users SET pterodactyl_user_id = NULL WHERE is_admin = 1');
+            // Still remove non-admin imported users
+            await run('DELETE FROM users WHERE is_admin = 0 AND pterodactyl_user_id IS NOT NULL');
+        } else {
+            // We have at least one non-imported admin; safe to delete all imported users (including admins)
+            await run('DELETE FROM users WHERE pterodactyl_user_id IS NOT NULL');
+        }
         
         // Clear the config cache in pterodactyl module
         const pterodactyl = require('../config/pterodactyl');
@@ -889,7 +1175,7 @@ router.post('/api/panel/disconnect', requireAdmin, async (req, res) => {
         const deletedCount = serversToDelete.length;
         res.json({ 
             success: true, 
-            message: `Pterodactyl panel disconnected successfully. ${deletedCount} server(s) deleted. Resources are now available for new servers. All configuration and cached data has been removed.` 
+            message: `Pterodactyl panel disconnected successfully. ${deletedCount} server(s) deleted. All Pterodactyl configuration, cached data, and imported users have been removed.` 
         });
     } catch (error) {
         console.error('Error disconnecting panel:', error);
@@ -1470,6 +1756,574 @@ router.post('/api/templates/:id/toggle', requireAdmin, async (req, res) => {
     } catch (error) {
         console.error('Error toggling template:', error);
         res.status(500).json({ success: false, message: 'Error toggling template status' });
+    }
+});
+
+// ============================================
+// Theme Customization Settings (v1.3)
+// ============================================
+
+// Preset themes configuration
+const PRESET_THEMES = {
+    default: {
+        name: 'Default Purple',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#7c3aed',
+        sidebar_color_2: '#a855f7',
+        sidebar_color_3: '#06b6d4',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#ffffff',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.25)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.15)',
+        main_bg_type: 'gradient',
+        main_color_1: '#0a0e27',
+        main_color_2: '#141b2d',
+        main_color_3: '#1a1f3a',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(30, 30, 50, 0.6)',
+        card_border_color: 'rgba(124, 58, 237, 0.2)',
+        card_text_color: '#f8fafc',
+        accent_primary: '#7c3aed',
+        accent_secondary: '#a855f7',
+        accent_tertiary: '#06b6d4',
+        accent_success: '#10b981',
+        accent_warning: '#f59e0b',
+        accent_danger: '#ef4444',
+        input_bg_color: 'rgba(30, 30, 50, 0.4)',
+        input_border_color: 'rgba(124, 58, 237, 0.3)',
+        input_text_color: '#f8fafc',
+        input_placeholder_color: '#94a3b8',
+        header_bg_color: 'rgba(20, 27, 45, 0.8)',
+        header_text_color: '#f8fafc'
+    },
+    ocean: {
+        name: 'Ocean Blue',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#0369a1',
+        sidebar_color_2: '#0891b2',
+        sidebar_color_3: '#06b6d4',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#ffffff',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.25)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.15)',
+        main_bg_type: 'gradient',
+        main_color_1: '#0c1929',
+        main_color_2: '#0f2744',
+        main_color_3: '#164e63',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(12, 74, 110, 0.4)',
+        card_border_color: 'rgba(8, 145, 178, 0.3)',
+        card_text_color: '#f0f9ff',
+        accent_primary: '#0891b2',
+        accent_secondary: '#06b6d4',
+        accent_tertiary: '#22d3ee',
+        accent_success: '#10b981',
+        accent_warning: '#f59e0b',
+        accent_danger: '#ef4444',
+        input_bg_color: 'rgba(12, 74, 110, 0.3)',
+        input_border_color: 'rgba(8, 145, 178, 0.3)',
+        input_text_color: '#f0f9ff',
+        input_placeholder_color: '#7dd3fc',
+        header_bg_color: 'rgba(12, 74, 110, 0.8)',
+        header_text_color: '#f0f9ff'
+    },
+    sunset: {
+        name: 'Sunset Orange',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#ea580c',
+        sidebar_color_2: '#f97316',
+        sidebar_color_3: '#facc15',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#ffffff',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.25)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.15)',
+        main_bg_type: 'gradient',
+        main_color_1: '#1c1410',
+        main_color_2: '#292017',
+        main_color_3: '#3d2a14',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(60, 30, 20, 0.6)',
+        card_border_color: 'rgba(249, 115, 22, 0.3)',
+        card_text_color: '#fff7ed',
+        accent_primary: '#f97316',
+        accent_secondary: '#fb923c',
+        accent_tertiary: '#facc15',
+        accent_success: '#22c55e',
+        accent_warning: '#eab308',
+        accent_danger: '#dc2626',
+        input_bg_color: 'rgba(60, 30, 20, 0.4)',
+        input_border_color: 'rgba(249, 115, 22, 0.3)',
+        input_text_color: '#fff7ed',
+        input_placeholder_color: '#fdba74',
+        header_bg_color: 'rgba(50, 25, 15, 0.8)',
+        header_text_color: '#fff7ed'
+    },
+    forest: {
+        name: 'Forest Green',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#166534',
+        sidebar_color_2: '#22c55e',
+        sidebar_color_3: '#86efac',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#ffffff',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.25)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.15)',
+        main_bg_type: 'gradient',
+        main_color_1: '#0a1a10',
+        main_color_2: '#14261a',
+        main_color_3: '#1a3323',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(20, 50, 30, 0.6)',
+        card_border_color: 'rgba(34, 197, 94, 0.3)',
+        card_text_color: '#f0fdf4',
+        accent_primary: '#22c55e',
+        accent_secondary: '#4ade80',
+        accent_tertiary: '#86efac',
+        accent_success: '#10b981',
+        accent_warning: '#f59e0b',
+        accent_danger: '#ef4444',
+        input_bg_color: 'rgba(20, 50, 30, 0.4)',
+        input_border_color: 'rgba(34, 197, 94, 0.3)',
+        input_text_color: '#f0fdf4',
+        input_placeholder_color: '#86efac',
+        header_bg_color: 'rgba(20, 50, 30, 0.8)',
+        header_text_color: '#f0fdf4'
+    },
+    midnight: {
+        name: 'Midnight Dark',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#18181b',
+        sidebar_color_2: '#27272a',
+        sidebar_color_3: '#3f3f46',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#fafafa',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.15)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.1)',
+        main_bg_type: 'gradient',
+        main_color_1: '#09090b',
+        main_color_2: '#18181b',
+        main_color_3: '#27272a',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(39, 39, 42, 0.6)',
+        card_border_color: 'rgba(113, 113, 122, 0.3)',
+        card_text_color: '#fafafa',
+        accent_primary: '#a1a1aa',
+        accent_secondary: '#d4d4d8',
+        accent_tertiary: '#e4e4e7',
+        accent_success: '#22c55e',
+        accent_warning: '#f59e0b',
+        accent_danger: '#ef4444',
+        input_bg_color: 'rgba(39, 39, 42, 0.4)',
+        input_border_color: 'rgba(113, 113, 122, 0.3)',
+        input_text_color: '#fafafa',
+        input_placeholder_color: '#a1a1aa',
+        header_bg_color: 'rgba(24, 24, 27, 0.9)',
+        header_text_color: '#fafafa'
+    },
+    rose: {
+        name: 'Rose Pink',
+        sidebar_bg_type: 'gradient',
+        sidebar_color_1: '#be185d',
+        sidebar_color_2: '#ec4899',
+        sidebar_color_3: '#f472b6',
+        sidebar_gradient_direction: '180deg',
+        sidebar_text_color: '#ffffff',
+        sidebar_active_bg: 'rgba(255, 255, 255, 0.25)',
+        sidebar_hover_bg: 'rgba(255, 255, 255, 0.15)',
+        main_bg_type: 'gradient',
+        main_color_1: '#1a0a14',
+        main_color_2: '#2a1020',
+        main_color_3: '#3d1530',
+        main_gradient_direction: '135deg',
+        card_bg_color: 'rgba(60, 20, 40, 0.6)',
+        card_border_color: 'rgba(236, 72, 153, 0.3)',
+        card_text_color: '#fdf2f8',
+        accent_primary: '#ec4899',
+        accent_secondary: '#f472b6',
+        accent_tertiary: '#f9a8d4',
+        accent_success: '#10b981',
+        accent_warning: '#f59e0b',
+        accent_danger: '#ef4444',
+        input_bg_color: 'rgba(60, 20, 40, 0.4)',
+        input_border_color: 'rgba(236, 72, 153, 0.3)',
+        input_text_color: '#fdf2f8',
+        input_placeholder_color: '#f9a8d4',
+        header_bg_color: 'rgba(50, 15, 35, 0.8)',
+        header_text_color: '#fdf2f8'
+    }
+};
+
+// Get theme settings (public - all users need this to render the dashboard)
+router.get('/api/theme', async (req, res) => {
+    try {
+        const theme = await get('SELECT * FROM theme_settings ORDER BY id DESC LIMIT 1');
+        
+        // If no theme exists, return default
+        if (!theme) {
+            return res.json({
+                success: true,
+                theme: PRESET_THEMES.default,
+                active_preset: 'default'
+            });
+        }
+        
+        res.json({
+            success: true,
+            theme: theme,
+            active_preset: theme.active_preset || 'default'
+        });
+    } catch (error) {
+        console.error('Error fetching theme settings:', error);
+        // Return default theme on error
+        res.json({
+            success: true,
+            theme: PRESET_THEMES.default,
+            active_preset: 'default'
+        });
+    }
+});
+
+// Get available preset themes
+router.get('/api/theme/presets', requireAdmin, (req, res) => {
+    const presets = Object.keys(PRESET_THEMES).map(key => ({
+        id: key,
+        name: PRESET_THEMES[key].name
+    }));
+    
+    res.json({
+        success: true,
+        presets: presets
+    });
+});
+
+// Apply a preset theme
+router.post('/api/theme/preset/:presetId', requireAdmin, async (req, res) => {
+    try {
+        const presetId = req.params.presetId;
+        
+        if (!PRESET_THEMES[presetId]) {
+            return res.status(400).json({ success: false, message: 'Invalid preset theme' });
+        }
+        
+        const preset = PRESET_THEMES[presetId];
+        
+        // Check if theme settings exist
+        const existingTheme = await get('SELECT id FROM theme_settings LIMIT 1');
+        
+        if (existingTheme) {
+            // Update existing theme
+            await run(`
+                UPDATE theme_settings SET
+                    sidebar_bg_type = ?,
+                    sidebar_color_1 = ?,
+                    sidebar_color_2 = ?,
+                    sidebar_color_3 = ?,
+                    sidebar_gradient_direction = ?,
+                    sidebar_text_color = ?,
+                    sidebar_active_bg = ?,
+                    sidebar_hover_bg = ?,
+                    main_bg_type = ?,
+                    main_color_1 = ?,
+                    main_color_2 = ?,
+                    main_color_3 = ?,
+                    main_gradient_direction = ?,
+                    card_bg_color = ?,
+                    card_border_color = ?,
+                    card_text_color = ?,
+                    accent_primary = ?,
+                    accent_secondary = ?,
+                    accent_tertiary = ?,
+                    accent_success = ?,
+                    accent_warning = ?,
+                    accent_danger = ?,
+                    input_bg_color = ?,
+                    input_border_color = ?,
+                    input_text_color = ?,
+                    input_placeholder_color = ?,
+                    header_bg_color = ?,
+                    header_text_color = ?,
+                    active_preset = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [
+                preset.sidebar_bg_type,
+                preset.sidebar_color_1,
+                preset.sidebar_color_2,
+                preset.sidebar_color_3,
+                preset.sidebar_gradient_direction,
+                preset.sidebar_text_color,
+                preset.sidebar_active_bg,
+                preset.sidebar_hover_bg,
+                preset.main_bg_type,
+                preset.main_color_1,
+                preset.main_color_2,
+                preset.main_color_3,
+                preset.main_gradient_direction,
+                preset.card_bg_color,
+                preset.card_border_color,
+                preset.card_text_color,
+                preset.accent_primary,
+                preset.accent_secondary,
+                preset.accent_tertiary,
+                preset.accent_success,
+                preset.accent_warning,
+                preset.accent_danger,
+                preset.input_bg_color,
+                preset.input_border_color,
+                preset.input_text_color,
+                preset.input_placeholder_color,
+                preset.header_bg_color,
+                preset.header_text_color,
+                presetId,
+                existingTheme.id
+            ]);
+        } else {
+            // Insert new theme
+            await run(`
+                INSERT INTO theme_settings (
+                    sidebar_bg_type, sidebar_color_1, sidebar_color_2, sidebar_color_3,
+                    sidebar_gradient_direction, sidebar_text_color, sidebar_active_bg, sidebar_hover_bg,
+                    main_bg_type, main_color_1, main_color_2, main_color_3, main_gradient_direction,
+                    card_bg_color, card_border_color, card_text_color,
+                    accent_primary, accent_secondary, accent_tertiary, accent_success, accent_warning, accent_danger,
+                    input_bg_color, input_border_color, input_text_color, input_placeholder_color,
+                    header_bg_color, header_text_color, active_preset
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                preset.sidebar_bg_type,
+                preset.sidebar_color_1,
+                preset.sidebar_color_2,
+                preset.sidebar_color_3,
+                preset.sidebar_gradient_direction,
+                preset.sidebar_text_color,
+                preset.sidebar_active_bg,
+                preset.sidebar_hover_bg,
+                preset.main_bg_type,
+                preset.main_color_1,
+                preset.main_color_2,
+                preset.main_color_3,
+                preset.main_gradient_direction,
+                preset.card_bg_color,
+                preset.card_border_color,
+                preset.card_text_color,
+                preset.accent_primary,
+                preset.accent_secondary,
+                preset.accent_tertiary,
+                preset.accent_success,
+                preset.accent_warning,
+                preset.accent_danger,
+                preset.input_bg_color,
+                preset.input_border_color,
+                preset.input_text_color,
+                preset.input_placeholder_color,
+                preset.header_bg_color,
+                preset.header_text_color,
+                presetId
+            ]);
+        }
+        
+        res.json({ 
+            success: true, 
+            message: `Theme "${preset.name}" applied successfully`,
+            theme: preset
+        });
+    } catch (error) {
+        console.error('Error applying preset theme:', error);
+        res.status(500).json({ success: false, message: 'Error applying theme' });
+    }
+});
+
+// Save custom theme settings
+router.post('/api/theme', requireAdmin, async (req, res) => {
+    try {
+        const {
+            sidebar_bg_type, sidebar_color_1, sidebar_color_2, sidebar_color_3,
+            sidebar_gradient_direction, sidebar_text_color, sidebar_active_bg, sidebar_hover_bg,
+            main_bg_type, main_color_1, main_color_2, main_color_3, main_gradient_direction,
+            card_bg_color, card_border_color, card_text_color,
+            accent_primary, accent_secondary, accent_tertiary, accent_success, accent_warning, accent_danger,
+            input_bg_color, input_border_color, input_text_color, input_placeholder_color,
+            header_bg_color, header_text_color
+        } = req.body;
+        
+        // Check if theme settings exist
+        const existingTheme = await get('SELECT id FROM theme_settings LIMIT 1');
+        
+        if (existingTheme) {
+            // Update existing theme
+            await run(`
+                UPDATE theme_settings SET
+                    sidebar_bg_type = COALESCE(?, sidebar_bg_type),
+                    sidebar_color_1 = COALESCE(?, sidebar_color_1),
+                    sidebar_color_2 = COALESCE(?, sidebar_color_2),
+                    sidebar_color_3 = COALESCE(?, sidebar_color_3),
+                    sidebar_gradient_direction = COALESCE(?, sidebar_gradient_direction),
+                    sidebar_text_color = COALESCE(?, sidebar_text_color),
+                    sidebar_active_bg = COALESCE(?, sidebar_active_bg),
+                    sidebar_hover_bg = COALESCE(?, sidebar_hover_bg),
+                    main_bg_type = COALESCE(?, main_bg_type),
+                    main_color_1 = COALESCE(?, main_color_1),
+                    main_color_2 = COALESCE(?, main_color_2),
+                    main_color_3 = COALESCE(?, main_color_3),
+                    main_gradient_direction = COALESCE(?, main_gradient_direction),
+                    card_bg_color = COALESCE(?, card_bg_color),
+                    card_border_color = COALESCE(?, card_border_color),
+                    card_text_color = COALESCE(?, card_text_color),
+                    accent_primary = COALESCE(?, accent_primary),
+                    accent_secondary = COALESCE(?, accent_secondary),
+                    accent_tertiary = COALESCE(?, accent_tertiary),
+                    accent_success = COALESCE(?, accent_success),
+                    accent_warning = COALESCE(?, accent_warning),
+                    accent_danger = COALESCE(?, accent_danger),
+                    input_bg_color = COALESCE(?, input_bg_color),
+                    input_border_color = COALESCE(?, input_border_color),
+                    input_text_color = COALESCE(?, input_text_color),
+                    input_placeholder_color = COALESCE(?, input_placeholder_color),
+                    header_bg_color = COALESCE(?, header_bg_color),
+                    header_text_color = COALESCE(?, header_text_color),
+                    active_preset = 'custom',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [
+                sidebar_bg_type, sidebar_color_1, sidebar_color_2, sidebar_color_3,
+                sidebar_gradient_direction, sidebar_text_color, sidebar_active_bg, sidebar_hover_bg,
+                main_bg_type, main_color_1, main_color_2, main_color_3, main_gradient_direction,
+                card_bg_color, card_border_color, card_text_color,
+                accent_primary, accent_secondary, accent_tertiary, accent_success, accent_warning, accent_danger,
+                input_bg_color, input_border_color, input_text_color, input_placeholder_color,
+                header_bg_color, header_text_color,
+                existingTheme.id
+            ]);
+        } else {
+            // Insert new theme with custom preset
+            const defaultTheme = PRESET_THEMES.default;
+            await run(`
+                INSERT INTO theme_settings (
+                    sidebar_bg_type, sidebar_color_1, sidebar_color_2, sidebar_color_3,
+                    sidebar_gradient_direction, sidebar_text_color, sidebar_active_bg, sidebar_hover_bg,
+                    main_bg_type, main_color_1, main_color_2, main_color_3, main_gradient_direction,
+                    card_bg_color, card_border_color, card_text_color,
+                    accent_primary, accent_secondary, accent_tertiary, accent_success, accent_warning, accent_danger,
+                    input_bg_color, input_border_color, input_text_color, input_placeholder_color,
+                    header_bg_color, header_text_color, active_preset
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                sidebar_bg_type || defaultTheme.sidebar_bg_type,
+                sidebar_color_1 || defaultTheme.sidebar_color_1,
+                sidebar_color_2 || defaultTheme.sidebar_color_2,
+                sidebar_color_3 || defaultTheme.sidebar_color_3,
+                sidebar_gradient_direction || defaultTheme.sidebar_gradient_direction,
+                sidebar_text_color || defaultTheme.sidebar_text_color,
+                sidebar_active_bg || defaultTheme.sidebar_active_bg,
+                sidebar_hover_bg || defaultTheme.sidebar_hover_bg,
+                main_bg_type || defaultTheme.main_bg_type,
+                main_color_1 || defaultTheme.main_color_1,
+                main_color_2 || defaultTheme.main_color_2,
+                main_color_3 || defaultTheme.main_color_3,
+                main_gradient_direction || defaultTheme.main_gradient_direction,
+                card_bg_color || defaultTheme.card_bg_color,
+                card_border_color || defaultTheme.card_border_color,
+                card_text_color || defaultTheme.card_text_color,
+                accent_primary || defaultTheme.accent_primary,
+                accent_secondary || defaultTheme.accent_secondary,
+                accent_tertiary || defaultTheme.accent_tertiary,
+                accent_success || defaultTheme.accent_success,
+                accent_warning || defaultTheme.accent_warning,
+                accent_danger || defaultTheme.accent_danger,
+                input_bg_color || defaultTheme.input_bg_color,
+                input_border_color || defaultTheme.input_border_color,
+                input_text_color || defaultTheme.input_text_color,
+                input_placeholder_color || defaultTheme.input_placeholder_color,
+                header_bg_color || defaultTheme.header_bg_color,
+                header_text_color || defaultTheme.header_text_color,
+                'custom'
+            ]);
+        }
+        
+        res.json({ success: true, message: 'Theme settings saved successfully' });
+    } catch (error) {
+        console.error('Error saving theme settings:', error);
+        res.status(500).json({ success: false, message: 'Error saving theme settings' });
+    }
+});
+
+// Reset theme to default
+router.post('/api/theme/reset', requireAdmin, async (req, res) => {
+    try {
+        const defaultTheme = PRESET_THEMES.default;
+        const existingTheme = await get('SELECT id FROM theme_settings LIMIT 1');
+        
+        if (existingTheme) {
+            await run(`
+                UPDATE theme_settings SET
+                    sidebar_bg_type = ?,
+                    sidebar_color_1 = ?,
+                    sidebar_color_2 = ?,
+                    sidebar_color_3 = ?,
+                    sidebar_gradient_direction = ?,
+                    sidebar_text_color = ?,
+                    sidebar_active_bg = ?,
+                    sidebar_hover_bg = ?,
+                    main_bg_type = ?,
+                    main_color_1 = ?,
+                    main_color_2 = ?,
+                    main_color_3 = ?,
+                    main_gradient_direction = ?,
+                    card_bg_color = ?,
+                    card_border_color = ?,
+                    card_text_color = ?,
+                    accent_primary = ?,
+                    accent_secondary = ?,
+                    accent_tertiary = ?,
+                    accent_success = ?,
+                    accent_warning = ?,
+                    accent_danger = ?,
+                    input_bg_color = ?,
+                    input_border_color = ?,
+                    input_text_color = ?,
+                    input_placeholder_color = ?,
+                    header_bg_color = ?,
+                    header_text_color = ?,
+                    active_preset = 'default',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `, [
+                defaultTheme.sidebar_bg_type,
+                defaultTheme.sidebar_color_1,
+                defaultTheme.sidebar_color_2,
+                defaultTheme.sidebar_color_3,
+                defaultTheme.sidebar_gradient_direction,
+                defaultTheme.sidebar_text_color,
+                defaultTheme.sidebar_active_bg,
+                defaultTheme.sidebar_hover_bg,
+                defaultTheme.main_bg_type,
+                defaultTheme.main_color_1,
+                defaultTheme.main_color_2,
+                defaultTheme.main_color_3,
+                defaultTheme.main_gradient_direction,
+                defaultTheme.card_bg_color,
+                defaultTheme.card_border_color,
+                defaultTheme.card_text_color,
+                defaultTheme.accent_primary,
+                defaultTheme.accent_secondary,
+                defaultTheme.accent_tertiary,
+                defaultTheme.accent_success,
+                defaultTheme.accent_warning,
+                defaultTheme.accent_danger,
+                defaultTheme.input_bg_color,
+                defaultTheme.input_border_color,
+                defaultTheme.input_text_color,
+                defaultTheme.input_placeholder_color,
+                defaultTheme.header_bg_color,
+                defaultTheme.header_text_color,
+                existingTheme.id
+            ]);
+        }
+        
+        res.json({ success: true, message: 'Theme reset to default successfully' });
+    } catch (error) {
+        console.error('Error resetting theme:', error);
+        res.status(500).json({ success: false, message: 'Error resetting theme' });
     }
 });
 

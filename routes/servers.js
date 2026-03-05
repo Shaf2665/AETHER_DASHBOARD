@@ -578,17 +578,35 @@ router.post('/api/power/:id', requireAuth, async (req, res) => {
         // Need the server identifier (not internal ID) for Client API
         const serverIdentifier = server.pterodactyl_identifier;
         
+        // #region agent log
+        console.log('[DEBUG] Power action request:', { serverId, action, serverIdentifier, pterodactylId: server.pterodactyl_id, userPteroId: req.session.user?.pterodactyl_user_id });
+        // #endregion
+        
         if (!serverIdentifier) {
+            // #region agent log
+            console.log('[DEBUG] Server identifier missing, checking pterodactyl_id:', server.pterodactyl_id);
+            // #endregion
             return res.status(400).json({ 
                 success: false, 
                 message: 'Server identifier not found. This server may have been created before the identifier system was implemented.' 
             });
         }
         
-        // Send power signal via Client API
+        // Send power signal via Client API using the global Client API key
+        console.log('[DEBUG] Calling sendServerPowerSignal with:', { serverIdentifier, action });
         const result = await pterodactyl.sendServerPowerSignal(serverIdentifier, action);
+        console.log('[DEBUG] sendServerPowerSignal result:', result);
         
         if (!result.success) {
+            // Handle 409 Conflict (server still installing) with a user-friendly message
+            if (result.isTransient) {
+                return res.status(409).json({ 
+                    success: false, 
+                    message: result.error || `Server is still installing. Please wait a moment before trying to ${action} it.`,
+                    isTransient: true
+                });
+            }
+            
             return res.status(500).json({ 
                 success: false, 
                 message: result.error || `Failed to ${action} server` 
@@ -718,7 +736,7 @@ router.get('/api/files/:id/list', requireAuth, async (req, res) => {
         }
         
         const directory = req.query.directory || '/';
-        const result = await pterodactyl.listFiles(server.pterodactyl_identifier, directory);
+        const result = await pterodactyl.listFiles(server.pterodactyl_identifier, directory, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to list files' });
@@ -748,7 +766,7 @@ router.get('/api/files/:id/contents', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'File path is required' });
         }
         
-        const result = await pterodactyl.getFileContents(server.pterodactyl_identifier, filePath);
+        const result = await pterodactyl.getFileContents(server.pterodactyl_identifier, filePath, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to get file contents' });
@@ -898,7 +916,7 @@ router.get('/api/backups/:id/list', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.listBackups(server.pterodactyl_identifier);
+        const result = await pterodactyl.listBackups(server.pterodactyl_identifier, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to list backups' });
@@ -924,7 +942,7 @@ router.post('/api/backups/:id/create', requireAuth, async (req, res) => {
         }
         
         const { name, is_locked } = req.body;
-        const result = await pterodactyl.createBackup(server.pterodactyl_identifier, name || null, is_locked || false);
+        const result = await pterodactyl.createBackup(server.pterodactyl_identifier, name || null, is_locked || false, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             // Check for backup limit error
@@ -953,7 +971,7 @@ router.delete('/api/backups/:id/:backupUuid', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.deleteBackup(server.pterodactyl_identifier, req.params.backupUuid);
+        const result = await pterodactyl.deleteBackup(server.pterodactyl_identifier, req.params.backupUuid, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to delete backup' });
@@ -978,7 +996,7 @@ router.get('/api/backups/:id/:backupUuid/download', requireAuth, async (req, res
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.getBackupDownloadUrl(server.pterodactyl_identifier, req.params.backupUuid);
+        const result = await pterodactyl.getBackupDownloadUrl(server.pterodactyl_identifier, req.params.backupUuid, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to get download URL' });
@@ -1004,7 +1022,7 @@ router.post('/api/backups/:id/:backupUuid/restore', requireAuth, async (req, res
         }
         
         const { truncate } = req.body;
-        const result = await pterodactyl.restoreBackup(server.pterodactyl_identifier, req.params.backupUuid, truncate || false);
+        const result = await pterodactyl.restoreBackup(server.pterodactyl_identifier, req.params.backupUuid, truncate || false, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to restore backup' });
@@ -1033,7 +1051,7 @@ router.get('/api/schedules/:id/list', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.listSchedules(server.pterodactyl_identifier);
+        const result = await pterodactyl.listSchedules(server.pterodactyl_identifier, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to list schedules' });
@@ -1073,7 +1091,8 @@ router.post('/api/schedules/:id/create', requireAuth, async (req, res) => {
             month || '*',
             day_of_week || '*',
             is_active !== false,
-            only_when_online !== false
+            only_when_online !== false,
+            req.session.user.pterodactyl_user_id
         );
         
         if (!result.success) {
@@ -1099,7 +1118,7 @@ router.delete('/api/schedules/:id/:scheduleId', requireAuth, async (req, res) =>
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.deleteSchedule(server.pterodactyl_identifier, req.params.scheduleId);
+        const result = await pterodactyl.deleteSchedule(server.pterodactyl_identifier, req.params.scheduleId, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to delete schedule' });
@@ -1124,7 +1143,7 @@ router.post('/api/schedules/:id/:scheduleId/execute', requireAuth, async (req, r
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.executeSchedule(server.pterodactyl_identifier, req.params.scheduleId);
+        const result = await pterodactyl.executeSchedule(server.pterodactyl_identifier, req.params.scheduleId, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to execute schedule' });
@@ -1160,7 +1179,8 @@ router.post('/api/schedules/:id/:scheduleId/tasks', requireAuth, async (req, res
             req.params.scheduleId,
             action,
             payload,
-            time_offset || 0
+            time_offset || 0,
+            req.session.user.pterodactyl_user_id
         );
         
         if (!result.success) {
@@ -1190,7 +1210,7 @@ router.get('/api/databases/:id/list', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.listDatabases(server.pterodactyl_identifier);
+        const result = await pterodactyl.listDatabases(server.pterodactyl_identifier, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to list databases' });
@@ -1226,7 +1246,7 @@ router.post('/api/databases/:id/create', requireAuth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Database name can only contain letters, numbers, and underscores' });
         }
         
-        const result = await pterodactyl.createDatabase(server.pterodactyl_identifier, database, remote || '%');
+        const result = await pterodactyl.createDatabase(server.pterodactyl_identifier, database, remote || '%', req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             if (result.error?.errors?.[0]?.code === 'TooManyRequestsHttpException') {
@@ -1254,7 +1274,7 @@ router.post('/api/databases/:id/:databaseId/rotate', requireAuth, async (req, re
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.rotateDatabasePassword(server.pterodactyl_identifier, req.params.databaseId);
+        const result = await pterodactyl.rotateDatabasePassword(server.pterodactyl_identifier, req.params.databaseId, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to rotate password' });
@@ -1279,7 +1299,7 @@ router.delete('/api/databases/:id/:databaseId', requireAuth, async (req, res) =>
             return res.status(400).json({ success: false, message: 'Server identifier not available' });
         }
         
-        const result = await pterodactyl.deleteDatabase(server.pterodactyl_identifier, req.params.databaseId);
+        const result = await pterodactyl.deleteDatabase(server.pterodactyl_identifier, req.params.databaseId, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
             return res.status(500).json({ success: false, message: result.error || 'Failed to delete database' });
@@ -1328,13 +1348,22 @@ router.get('/api/status/:id', requireAuth, async (req, res) => {
         }
         
         // Get server resources which includes current state
-        const result = await pterodactyl.getServerResources(serverIdentifier);
+        const result = await pterodactyl.getServerResources(serverIdentifier, req.session.user.pterodactyl_user_id);
         
         if (!result.success) {
+            // Handle 409 Conflict (server still installing) gracefully
+            if (result.isTransient) {
+                return res.json({ 
+                    success: true, 
+                    status: 'installing',
+                    message: result.error || 'Server is still installing. Please wait a moment.'
+                });
+            }
+            
             return res.json({ 
                 success: true, 
                 status: 'unknown',
-                message: 'Could not fetch server status'
+                message: result.error || 'Could not fetch server status'
             });
         }
         

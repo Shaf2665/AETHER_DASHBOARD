@@ -177,10 +177,26 @@
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">Admin Panel</span>
                 </a>
-                <a href="/admin/settings" class="nav-item admin-only" data-page="admin-settings" style="display: none;">
-                    <span class="nav-icon">🎨</span>
-                    <span class="nav-text">Admin Settings</span>
-                </a>
+                <!-- Admin Settings Dropdown -->
+                <div class="nav-dropdown admin-only" style="display: none;">
+                    <div class="nav-dropdown-toggle">
+                        <div class="nav-dropdown-left">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Admin Settings</span>
+                        </div>
+                        <span class="nav-dropdown-arrow">▼</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="/admin/settings/themes" class="nav-item" data-page="admin-themes">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Themes</span>
+                        </a>
+                        <a href="/admin/settings/branding" class="nav-item" data-page="admin-branding">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">Branding</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
@@ -287,6 +303,7 @@
     
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
     <script>
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -977,7 +994,14 @@
                     setTimeout(() => loadServerStatus(serverId), 5000);
                     setTimeout(() => loadServerStatus(serverId), 10000);
                 } else {
-                    showNotification(data.message || `Failed to ${action} server`, 'error');
+                    // Handle transient errors (like 409 - server still installing) with info/warning
+                    if (data.isTransient || response.status === 409) {
+                        showNotification(data.message || `Server is not ready yet. Please wait a moment and try again.`, 'info');
+                        // Auto-retry after a delay for transient errors
+                        setTimeout(() => loadServerStatus(serverId), 5000);
+                    } else {
+                        showNotification(data.message || `Failed to ${action} server`, 'error');
+                    }
                     // Reload actual status
                     loadServerStatus(serverId);
                 }

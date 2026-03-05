@@ -307,7 +307,7 @@ pm2 restart aether-dashboard
 
 ---
 
-## 🚀 New Features Troubleshooting (Version 1.3)
+## 🚀 New Features Troubleshooting (Version 1.3+)
 
 ### "Server power buttons don't work" (Start/Stop/Restart)
 
@@ -496,7 +496,7 @@ If you've tried everything above and still have issues:
 
 ---
 
-**Last Updated:** Version 1.3
+**Last Updated:** Version 1.3.1
 
 **Made with ❤️ for free hosting providers**
 

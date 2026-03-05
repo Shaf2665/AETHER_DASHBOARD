@@ -4,7 +4,7 @@
 
 ---
 
-## 📝 Note About Server Backups (Version 1.3)
+## 📝 Note About Server Backups (Version 1.3+)
 
 **This guide is for DASHBOARD backups** (your `database.db` file).
 
@@ -416,7 +416,7 @@ crontab -e
 
 ---
 
-**Last Updated:** Version 1.3
+**Last Updated:** Version 1.3.1
 
 **Made with ❤️ for free hosting providers**
 

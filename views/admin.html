@@ -50,10 +50,26 @@
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">Admin Panel</span>
                 </a>
-                <a href="/admin/settings" class="nav-item admin-only" data-page="admin-settings" style="display: none;">
-                    <span class="nav-icon">🎨</span>
-                    <span class="nav-text">Admin Settings</span>
-                </a>
+                <!-- Admin Settings Dropdown -->
+                <div class="nav-dropdown admin-only" style="display: none;">
+                    <div class="nav-dropdown-toggle">
+                        <div class="nav-dropdown-left">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Admin Settings</span>
+                        </div>
+                        <span class="nav-dropdown-arrow">▼</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="/admin/settings/themes" class="nav-item" data-page="admin-themes">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Themes</span>
+                        </a>
+                        <a href="/admin/settings/branding" class="nav-item" data-page="admin-branding">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">Branding</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
@@ -398,9 +414,15 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="panelApiKey">API Key</label>
-                                    <input type="text" id="panelApiKey" placeholder="ptlc_xxxxxxxxxxxxx" required>
-                                    <small style="color: #cbd5e1;">Your Pterodactyl API key (Application API key with Read & Write permissions)</small>
+                                    <label for="panelApiKey">Application API Key</label>
+                                    <input type="text" id="panelApiKey" placeholder="ptla_xxxxxxxxxxxxx" required>
+                                    <small style="color: #cbd5e1;">Your Pterodactyl <strong>Application</strong> API key (Admin → Application API → Read &amp; Write).</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="panelClientApiKey">Client API Key</label>
+                                    <input type="text" id="panelClientApiKey" placeholder="ptlc_xxxxxxxxxxxxx" required>
+                                    <small style="color: #cbd5e1;">Your Pterodactyl <strong>Client</strong> API key (User avatar → API → Create key).</small>
                                 </div>
                                 
                                 <div style="display: flex; gap: 12px; margin-top: 20px;">
@@ -469,6 +491,44 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Import Users from Panel -->
+                        <div class="card" style="margin-bottom: 20px;">
+                            <div class="card-header">📥 Import Users from Panel</div>
+                            <p style="color: #cbd5e1; margin-bottom: 20px;">
+                                Import existing Pterodactyl users into the dashboard. This will create dashboard accounts for users who exist in Pterodactyl but not in the dashboard, or link existing dashboard accounts if emails match.
+                            </p>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <button class="btn btn-secondary" id="importUsersBtn" onclick="importUsersFromPanel()">
+                                    📥 Import Users from Panel
+                                </button>
+                            </div>
+                            
+                            <!-- Progress Section -->
+                            <div id="importProgressSection" style="display: none;">
+                                <div style="margin-bottom: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <span id="importProgressLabel" style="color: #f8fafc; font-weight: 500;">Starting import...</span>
+                                        <span id="importProgressPercent" style="color: #7c3aed; font-weight: 600;">0%</span>
+                                    </div>
+                                    <div style="background: rgba(10, 14, 39, 0.5); border-radius: 8px; height: 20px; overflow: hidden; border: 1px solid rgba(124, 58, 237, 0.3);">
+                                        <div id="importProgressBar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #7c3aed, #a855f7); border-radius: 8px; transition: width 0.3s ease;"></div>
+                                    </div>
+                                </div>
+                                
+                                <div id="importStatusLog" style="max-height: 200px; overflow-y: auto; background: rgba(10, 14, 39, 0.5); border-radius: 8px; padding: 12px; border: 1px solid rgba(124, 58, 237, 0.2); font-family: monospace; font-size: 12px;">
+                                    <!-- Status messages will appear here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Result Summary -->
+                            <div id="importResultSection" style="display: none; margin-top: 16px;">
+                                <div id="importResultContent" style="padding: 16px; background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px;">
+                                    <!-- Result will appear here -->
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Settings -->
                         <div class="card">
@@ -506,6 +566,7 @@
     
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             initMobileMenu();
@@ -1069,6 +1130,9 @@
                     if (data.success && data.config) {
                         document.getElementById('panelUrl').value = data.config.panel_url || '';
                         document.getElementById('panelApiKey').value = data.config.api_key || '';
+                        if (document.getElementById('panelClientApiKey')) {
+                            document.getElementById('panelClientApiKey').value = data.config.client_api_key || '';
+                        }
                         displayConnectionStatus(data.config);
                     }
                 }
@@ -1156,9 +1220,10 @@
         async function testPanelConnection() {
             const panelUrl = document.getElementById('panelUrl').value.trim();
             const apiKey = document.getElementById('panelApiKey').value.trim();
+            const clientApiKey = document.getElementById('panelClientApiKey')?.value.trim() || '';
             
-            if (!panelUrl || !apiKey) {
-                showNotification('Please enter both Panel URL and API Key', 'error');
+            if (!panelUrl || !apiKey || !clientApiKey) {
+                showNotification('Please enter Panel URL, Application API Key, and Client API Key', 'error');
                 return;
             }
             
@@ -1179,7 +1244,7 @@
                 const response = await fetch('/admin/api/panel/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey })
+                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey, client_api_key: clientApiKey })
                 });
                 
                 const data = await response.json();
@@ -1229,8 +1294,8 @@
                     document.getElementById('panelApiKey').value = '';
                     
                     // Clear eggs and allocations lists
-                    document.getElementById('eggsList').innerHTML = '<p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load eggs.</p>';
-                    document.getElementById('allocationsList').innerHTML = '<p style="color: #cbd5e1;">Click "Fetch from Pterodactyl" to load allocations.</p>';
+                    document.getElementById('eggsList').innerHTML = '<p style="color: #cbd5e1;">Click \"Fetch from Pterodactyl\" to load eggs.</p>';
+                    document.getElementById('allocationsList').innerHTML = '<p style=\"color: #cbd5e1;\">Click \"Fetch from Pterodactyl\" to load allocations.</p>';
                     
                     // Clear settings form
                     document.getElementById('defaultNestId').value = '';
@@ -1239,9 +1304,13 @@
                     // Reload the config to show disconnected status
                     await loadPanelConfig();
                     await loadPanelSettings();
+
+                    // Refresh system statistics and users list so the UI reflects removed users/servers
+                    await loadSystemStats();
+                    await loadUsers();
                     
                     // Re-enable Connect button
-                    const connectBtn = document.getElementById('panelConfigForm')?.querySelector('button[type="submit"]');
+                    const connectBtn = document.getElementById('panelConfigForm')?.querySelector('button[type=\"submit\"]');
                     if (connectBtn) {
                         connectBtn.disabled = false;
                         connectBtn.style.opacity = '1';
@@ -1613,15 +1682,170 @@
             }
         }
         
+        // Import Users from Pterodactyl Panel
+        let importInProgress = false;
+        let currentEventSource = null;
+        
+        function importUsersFromPanel() {
+            // Prevent multiple simultaneous imports
+            if (importInProgress) {
+                showNotification('Import is already in progress. Please wait for it to complete.', 'error');
+                return;
+            }
+            
+            if (!confirm('This will import all existing Pterodactyl users into the dashboard. Users without dashboard accounts will be created, and existing accounts with matching emails will be linked. Continue?')) {
+                return;
+            }
+            
+            const importBtn = document.getElementById('importUsersBtn');
+            const progressSection = document.getElementById('importProgressSection');
+            const resultSection = document.getElementById('importResultSection');
+            const progressBar = document.getElementById('importProgressBar');
+            const progressPercent = document.getElementById('importProgressPercent');
+            const progressLabel = document.getElementById('importProgressLabel');
+            const statusLog = document.getElementById('importStatusLog');
+            const resultContent = document.getElementById('importResultContent');
+            
+            // Reset UI
+            importInProgress = true;
+            importBtn.disabled = true;
+            importBtn.innerHTML = '⏳ Importing...';
+            progressSection.style.display = 'block';
+            resultSection.style.display = 'none';
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressLabel.textContent = 'Starting import...';
+            statusLog.innerHTML = '';
+            
+            // Close any existing EventSource
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+            
+            // Create EventSource for SSE
+            console.log('[DEBUG] Creating EventSource for import');
+            const eventSource = new EventSource('/admin/api/panel/import-users');
+            currentEventSource = eventSource;
+            
+            eventSource.onopen = function() {
+                console.log('[DEBUG] EventSource connection opened');
+            };
+            
+            eventSource.onmessage = function(event) {
+                console.log('[DEBUG] EventSource message received:', event.data);
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Update progress bar
+                    progressBar.style.width = data.percent + '%';
+                    progressPercent.textContent = data.percent + '%';
+                    progressLabel.textContent = data.message;
+                    
+                    // Add to status log
+                    const logEntry = document.createElement('div');
+                    logEntry.style.marginBottom = '4px';
+                    
+                    // Color based on message content
+                    let color = '#cbd5e1'; // default gray
+                    if (data.message.startsWith('Imported:')) {
+                        color = '#4ade80'; // green
+                    } else if (data.message.startsWith('Linked:')) {
+                        color = '#60a5fa'; // blue
+                    } else if (data.message.startsWith('Skipped:')) {
+                        color = '#fbbf24'; // yellow
+                    } else if (data.message.startsWith('Failed:')) {
+                        color = '#f87171'; // red
+                    } else if (data.status === 'complete') {
+                        color = '#4ade80'; // green
+                    } else if (data.status === 'error') {
+                        color = '#f87171'; // red
+                    }
+                    
+                    logEntry.innerHTML = `<span style="color: ${color};">[${data.percent}%] ${data.message}</span>`;
+                    statusLog.appendChild(logEntry);
+                    statusLog.scrollTop = statusLog.scrollHeight; // Auto-scroll to bottom
+                    
+                    // Handle completion
+                    if (data.status === 'complete') {
+                        eventSource.close();
+                        currentEventSource = null;
+                        importInProgress = false;
+                        importBtn.disabled = false;
+                        importBtn.innerHTML = '📥 Import Users from Panel';
+                        
+                        // Show success result
+                        resultSection.style.display = 'block';
+                        resultContent.style.background = 'rgba(76, 175, 80, 0.1)';
+                        resultContent.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                        resultContent.innerHTML = `
+                            <strong style="color: #4caf50; font-size: 16px;">✓ Migration Successful</strong>
+                            <p style="color: #cbd5e1; margin-top: 8px;">${data.message}</p>
+                        `;
+                        
+                        showNotification('User import completed successfully!', 'success');
+                    } else if (data.status === 'error') {
+                        eventSource.close();
+                        currentEventSource = null;
+                        importInProgress = false;
+                        importBtn.disabled = false;
+                        importBtn.innerHTML = '📥 Import Users from Panel';
+                        
+                        // Show error result
+                        resultSection.style.display = 'block';
+                        resultContent.style.background = 'rgba(255, 87, 34, 0.1)';
+                        resultContent.style.borderColor = 'rgba(255, 87, 34, 0.3)';
+                        resultContent.innerHTML = `
+                            <strong style="color: #ff5722; font-size: 16px;">✗ Import Failed</strong>
+                            <p style="color: #cbd5e1; margin-top: 8px;">${data.message}</p>
+                        `;
+                        
+                        showNotification(data.message || 'Import failed', 'error');
+                    }
+                } catch (parseError) {
+                    console.error('Error parsing SSE data:', parseError);
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('[DEBUG] SSE Error:', error);
+                console.error('[DEBUG] EventSource readyState:', eventSource.readyState);
+                console.error('[DEBUG] EventSource URL:', eventSource.url);
+                
+                // Only handle error if EventSource is in CLOSED state (not CONNECTING)
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    console.log('[DEBUG] EventSource closed, handling error');
+                    eventSource.close();
+                    currentEventSource = null;
+                    importInProgress = false;
+                    importBtn.disabled = false;
+                    importBtn.innerHTML = '📥 Import Users from Panel';
+                    
+                    // Show error result
+                    resultSection.style.display = 'block';
+                    resultContent.style.background = 'rgba(255, 87, 34, 0.1)';
+                    resultContent.style.borderColor = 'rgba(255, 87, 34, 0.3)';
+                    resultContent.innerHTML = `
+                        <strong style="color: #ff5722; font-size: 16px;">✗ Connection Error</strong>
+                        <p style="color: #cbd5e1; margin-top: 8px;">Lost connection to the server. Please try again.</p>
+                        <p style="color: #94a3b8; margin-top: 8px; font-size: 12px;">Check browser console (F12) for details.</p>
+                    `;
+                    
+                    showNotification('Connection error during import', 'error');
+                }
+                // If CONNECTING, wait for it to either connect or close
+            };
+        }
+        
         // Panel Config Form
         document.getElementById('panelConfigForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const panelUrl = document.getElementById('panelUrl').value.trim();
             const apiKey = document.getElementById('panelApiKey').value.trim();
+            const clientApiKey = document.getElementById('panelClientApiKey')?.value.trim() || '';
             
-            if (!panelUrl || !apiKey) {
-                showNotification('Panel URL and API key are required', 'error');
+            if (!panelUrl || !apiKey || !clientApiKey) {
+                showNotification('Panel URL, Application API key, and Client API key are required', 'error');
                 return;
             }
             
@@ -1642,7 +1866,7 @@
                 const response = await fetch('/admin/api/panel/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey })
+                    body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey, client_api_key: clientApiKey })
                 });
                 
                 const data = await response.json();

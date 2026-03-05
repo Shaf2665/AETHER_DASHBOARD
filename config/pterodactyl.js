@@ -130,13 +130,34 @@ async function makeRequest(method, endpoint, data = null, timeoutMs = 30000) {
             ...(data && { data })
         };
 
+        // #region agent log
+        console.log('[DEBUG] makeRequest calling:', { method, endpoint, hasData: !!data, baseURL: `${pterodactylConfig.url}/api` });
+        // #endregion
+        
         const response = await requestAPI(requestConfig);
+
+        // #region agent log
+        console.log('[DEBUG] makeRequest success:', { status: response.status, endpoint });
+        // #endregion
 
         return {
             success: true,
             data: response.data
         };
     } catch (error) {
+        // #region agent log
+        console.error('[DEBUG] makeRequest error:', { 
+            endpoint, 
+            method,
+            errorCode: error.code,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            errorData: error.response?.data,
+            errorMessage: error.message,
+            errorStack: error.stack?.substring(0, 200)
+        });
+        // #endregion
+        
         // Handle timeout errors specifically
         if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
             console.error('Pterodactyl API Timeout:', endpoint, `(timeout: ${timeoutMs}ms)`);
@@ -146,10 +167,174 @@ async function makeRequest(method, endpoint, data = null, timeoutMs = 30000) {
             };
         }
         
-        console.error('Pterodactyl API Error:', error.response?.data || error.message);
+        // Extract error message from response
+        let errorMessage = error.message;
+        if (error.response?.data) {
+            if (typeof error.response.data === 'string') {
+                // Check if it's an HTML error page (like Cloudflare 504)
+                if (error.response.data.includes('<!DOCTYPE html>') || error.response.data.includes('<html')) {
+                    // Extract readable error information from HTML
+                    const statusCode = error.response?.status || 'Unknown';
+                    const statusText = error.response?.statusText || 'Error';
+                    
+                    // Try to extract title or error message from HTML
+                    const titleMatch = error.response.data.match(/<title[^>]*>([^<]+)<\/title>/i);
+                    const h1Match = error.response.data.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+                    
+                    if (titleMatch) {
+                        // Extract just the error part (e.g., "504: Gateway time-out" -> "Gateway time-out")
+                        const title = titleMatch[1].replace(/^[^:]+:\s*/, '').trim();
+                        errorMessage = `${statusText} (${statusCode}): ${title}`;
+                    } else if (h1Match) {
+                        errorMessage = `${statusText} (${statusCode}): ${h1Match[1].trim()}`;
+                    } else {
+                        errorMessage = `${statusText} (${statusCode}): The server returned an error page. Please try again in a few moments.`;
+                    }
+                } else {
+                    errorMessage = error.response.data;
+                }
+            } else if (error.response.data.errors) {
+                // Pterodactyl API error format
+                const errors = error.response.data.errors;
+                errorMessage = errors.map(e => e.detail || e.code || JSON.stringify(e)).join(', ');
+            } else if (error.response.data.message) {
+                errorMessage = error.response.data.message;
+            } else {
+                errorMessage = JSON.stringify(error.response.data);
+            }
+        }
+        
+        console.error('Pterodactyl API Error:', errorMessage);
         return {
             success: false,
-            error: error.response?.data || error.message
+            error: errorMessage
+        };
+    }
+}
+
+// Helper: make a request to the Client API using the global Client API key
+// NOTE: pterodactylUserId is kept for backward compatibility but is not required
+async function makeClientRequest(method, endpoint, data = null, pterodactylUserId = null, timeoutMs = 30000) {
+    try {
+        const configRow = await get('SELECT panel_url, client_api_key FROM pterodactyl_config ORDER BY id DESC LIMIT 1');
+        const url = configRow?.panel_url || process.env.PTERODACTYL_URL || '';
+        const clientApiKey = configRow?.client_api_key || process.env.PTERODACTYL_CLIENT_API_KEY || '';
+
+        if (!url || !clientApiKey) {
+            throw new Error('Client API key or panel URL is missing. Please configure a Client API key in Admin Panel → Panel.');
+        }
+
+        const requestAPI = axios.create({
+            baseURL: `${url}/api`,
+            headers: {
+                'Authorization': `Bearer ${clientApiKey}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            timeout: timeoutMs
+        });
+
+        const requestConfig = {
+            method: method,
+            url: endpoint,
+            ...(data && { data })
+        };
+
+        console.log('[DEBUG] makeClientRequest calling:', { method, endpoint, hasData: !!data });
+
+        const response = await requestAPI(requestConfig);
+
+        console.log('[DEBUG] makeClientRequest success:', { status: response.status, endpoint });
+
+        return {
+            success: true,
+            data: response.data
+        };
+    } catch (error) {
+        console.error('[DEBUG] makeClientRequest error:', {
+            endpoint,
+            method,
+            errorCode: error.code,
+            status: error.response?.status,
+            errorData: error.response?.data,
+            errorMessage: error.message
+        });
+
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            return {
+                success: false,
+                error: 'Request timeout: Pterodactyl Client API did not respond in time.'
+            };
+        }
+
+        // Handle 409 Conflict - Server is likely still installing/not ready
+        if (error.response?.status === 409) {
+            // Check if it's a resources endpoint (server not ready) or power endpoint
+            const isResourcesEndpoint = endpoint.includes('/resources');
+            const isPowerEndpoint = endpoint.includes('/power');
+            
+            if (isResourcesEndpoint || isPowerEndpoint) {
+                return {
+                    success: false,
+                    error: 'Server is still installing or not ready yet. Please wait a moment and try again.',
+                    isTransient: true // Flag to indicate this is a temporary state
+                };
+            }
+            
+            // Generic 409 handling
+            let conflictMessage = 'Server is in a transitional state. Please try again in a moment.';
+            if (error.response?.data?.errors) {
+                const errors = error.response.data.errors;
+                const detail = errors[0]?.detail || errors[0]?.code;
+                if (detail) {
+                    conflictMessage = detail;
+                }
+            }
+            return {
+                success: false,
+                error: conflictMessage,
+                isTransient: true
+            };
+        }
+
+        let errorMessage = error.message;
+        if (error.response?.data) {
+            if (typeof error.response.data === 'string') {
+                // Check if it's an HTML error page (like Cloudflare 504)
+                if (error.response.data.includes('<!DOCTYPE html>') || error.response.data.includes('<html')) {
+                    // Extract readable error information from HTML
+                    const statusCode = error.response?.status || 'Unknown';
+                    const statusText = error.response?.statusText || 'Error';
+                    
+                    // Try to extract title or error message from HTML
+                    const titleMatch = error.response.data.match(/<title[^>]*>([^<]+)<\/title>/i);
+                    const h1Match = error.response.data.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+                    
+                    if (titleMatch) {
+                        // Extract just the error part (e.g., "504: Gateway time-out" -> "Gateway time-out")
+                        const title = titleMatch[1].replace(/^[^:]+:\s*/, '').trim();
+                        errorMessage = `${statusText} (${statusCode}): ${title}`;
+                    } else if (h1Match) {
+                        errorMessage = `${statusText} (${statusCode}): ${h1Match[1].trim()}`;
+                    } else {
+                        errorMessage = `${statusText} (${statusCode}): The server returned an error page. Please try again in a few moments.`;
+                    }
+                } else {
+                    errorMessage = error.response.data;
+                }
+            } else if (error.response.data.errors) {
+                const errors = error.response.data.errors;
+                errorMessage = errors.map(e => e.detail || e.code || JSON.stringify(e)).join(', ');
+            } else if (error.response.data.message) {
+                errorMessage = error.response.data.message;
+            } else {
+                errorMessage = JSON.stringify(error.response.data);
+            }
+        }
+
+        return {
+            success: false,
+            error: errorMessage
         };
     }
 }
@@ -284,8 +469,9 @@ async function getServerDetails(serverId) {
 // The Application API does NOT have a /resources endpoint
 // Real-time resource usage is only available via the Client API
 // NOTE: Requires server IDENTIFIER (8-char string), not internal numeric ID
-async function getServerResources(serverIdentifier) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/resources`);
+// Requires user's Pterodactyl user ID to obtain a Client API token
+async function getServerResources(serverIdentifier, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/resources`, null, pterodactylUserId);
 }
 
 // Create a new server (with extended timeout for server creation)
@@ -482,25 +668,32 @@ async function updateServerBuild(serverId, limits) {
 // BUGFIX #5: Send power signal to server (start, stop, restart, kill)
 // Power signals use the CLIENT API (not Application API) and require the server IDENTIFIER (not internal ID)
 // The Application API does not have a /power endpoint - it only has /suspend and /unsuspend
-async function sendServerPowerSignal(serverIdentifier, signal) {
+// Uses the global Client API key; pterodactylUserId is optional for compatibility
+async function sendServerPowerSignal(serverIdentifier, signal, pterodactylUserId = null) {
     // signal should be: 'start', 'stop', 'restart', 'kill'
     // serverIdentifier should be the 8-char identifier (e.g., 'a1b2c3d4'), NOT the internal numeric ID
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/power`, { signal });
+    // #region agent log
+    console.log('[DEBUG] sendServerPowerSignal called:', { serverIdentifier, signal, endpoint: `/client/servers/${serverIdentifier}/power` });
+    // #endregion
+    const result = await makeClientRequest('POST', `/client/servers/${serverIdentifier}/power`, { signal }, pterodactylUserId);
+    // #region agent log
+    console.log('[DEBUG] sendServerPowerSignal result:', result);
+    // #endregion
+    return result;
 }
 
 // Restart server (convenience wrapper for power signal)
-// NOTE: Requires server IDENTIFIER, not internal ID
-async function restartServer(serverIdentifier) {
-    return await sendServerPowerSignal(serverIdentifier, 'restart');
+async function restartServer(serverIdentifier, pterodactylUserId = null) {
+    return await sendServerPowerSignal(serverIdentifier, 'restart', pterodactylUserId);
 }
 
 // ============================================
 // FEATURE 4: Send command to server console
 // ============================================
-async function sendServerCommand(serverIdentifier, command) {
+async function sendServerCommand(serverIdentifier, command, pterodactylUserId) {
     // Uses Client API to send a command to the server console
     // serverIdentifier should be the 8-char identifier (e.g., 'a1b2c3d4')
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/command`, { command });
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/command`, { command }, pterodactylUserId);
 }
 
 // ============================================
@@ -508,16 +701,16 @@ async function sendServerCommand(serverIdentifier, command) {
 // ============================================
 
 // List files in a directory
-async function listFiles(serverIdentifier, directory = '/') {
+async function listFiles(serverIdentifier, directory = '/', pterodactylUserId) {
     // Encode the directory path for URL
     const encodedDir = encodeURIComponent(directory);
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/files/list?directory=${encodedDir}`);
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/files/list?directory=${encodedDir}`, null, pterodactylUserId);
 }
 
 // Get file contents
-async function getFileContents(serverIdentifier, filePath) {
+async function getFileContents(serverIdentifier, filePath, pterodactylUserId) {
     const encodedPath = encodeURIComponent(filePath);
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/files/contents?file=${encodedPath}`);
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/files/contents?file=${encodedPath}`, null, pterodactylUserId);
 }
 
 // Write file contents
@@ -597,38 +790,38 @@ async function decompressFile(serverIdentifier, root, file) {
 // ============================================
 
 // List backups for a server
-async function listBackups(serverIdentifier) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/backups`);
+async function listBackups(serverIdentifier, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/backups`, null, pterodactylUserId);
 }
 
 // Create a new backup
-async function createBackup(serverIdentifier, name = null, isLocked = false) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/backups`, {
+async function createBackup(serverIdentifier, name = null, isLocked = false, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/backups`, {
         name: name,
         is_locked: isLocked
-    });
+    }, pterodactylUserId);
 }
 
 // Get backup details
-async function getBackup(serverIdentifier, backupUuid) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/backups/${backupUuid}`);
+async function getBackup(serverIdentifier, backupUuid, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/backups/${backupUuid}`, null, pterodactylUserId);
 }
 
 // Get backup download URL
-async function getBackupDownloadUrl(serverIdentifier, backupUuid) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/backups/${backupUuid}/download`);
+async function getBackupDownloadUrl(serverIdentifier, backupUuid, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/backups/${backupUuid}/download`, null, pterodactylUserId);
 }
 
 // Delete a backup
-async function deleteBackup(serverIdentifier, backupUuid) {
-    return await makeRequest('DELETE', `/client/servers/${serverIdentifier}/backups/${backupUuid}`);
+async function deleteBackup(serverIdentifier, backupUuid, pterodactylUserId) {
+    return await makeClientRequest('DELETE', `/client/servers/${serverIdentifier}/backups/${backupUuid}`, null, pterodactylUserId);
 }
 
 // Restore from a backup
-async function restoreBackup(serverIdentifier, backupUuid, truncate = false) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/backups/${backupUuid}/restore`, {
+async function restoreBackup(serverIdentifier, backupUuid, truncate = false, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/backups/${backupUuid}/restore`, {
         truncate: truncate
-    });
+    }, pterodactylUserId);
 }
 
 // ============================================
@@ -636,18 +829,18 @@ async function restoreBackup(serverIdentifier, backupUuid, truncate = false) {
 // ============================================
 
 // List all schedules
-async function listSchedules(serverIdentifier) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/schedules`);
+async function listSchedules(serverIdentifier, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/schedules`, null, pterodactylUserId);
 }
 
 // Get schedule details
-async function getSchedule(serverIdentifier, scheduleId) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`);
+async function getSchedule(serverIdentifier, scheduleId, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`, null, pterodactylUserId);
 }
 
 // Create a schedule
-async function createSchedule(serverIdentifier, name, minute, hour, dayOfMonth, month, dayOfWeek, isActive = true, onlyWhenOnline = true) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/schedules`, {
+async function createSchedule(serverIdentifier, name, minute, hour, dayOfMonth, month, dayOfWeek, isActive = true, onlyWhenOnline = true, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/schedules`, {
         name: name,
         is_active: isActive,
         minute: minute,
@@ -656,38 +849,38 @@ async function createSchedule(serverIdentifier, name, minute, hour, dayOfMonth, 
         month: month,
         day_of_week: dayOfWeek,
         only_when_online: onlyWhenOnline
-    });
+    }, pterodactylUserId);
 }
 
 // Update a schedule
-async function updateSchedule(serverIdentifier, scheduleId, data) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`, data);
+async function updateSchedule(serverIdentifier, scheduleId, data, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`, data, pterodactylUserId);
 }
 
 // Delete a schedule
-async function deleteSchedule(serverIdentifier, scheduleId) {
-    return await makeRequest('DELETE', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`);
+async function deleteSchedule(serverIdentifier, scheduleId, pterodactylUserId) {
+    return await makeClientRequest('DELETE', `/client/servers/${serverIdentifier}/schedules/${scheduleId}`, null, pterodactylUserId);
 }
 
 // Execute a schedule now
-async function executeSchedule(serverIdentifier, scheduleId) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/execute`);
+async function executeSchedule(serverIdentifier, scheduleId, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/execute`, null, pterodactylUserId);
 }
 
 // Create a task for a schedule
-async function createScheduleTask(serverIdentifier, scheduleId, action, payload, timeOffset = 0) {
+async function createScheduleTask(serverIdentifier, scheduleId, action, payload, timeOffset = 0, pterodactylUserId) {
     // action: 'command', 'power', or 'backup'
     // payload: for command = the command string, for power = 'start', 'stop', 'restart', 'kill'
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/tasks`, {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/tasks`, {
         action: action,
         payload: payload,
         time_offset: timeOffset
-    });
+    }, pterodactylUserId);
 }
 
 // Delete a task from a schedule
-async function deleteScheduleTask(serverIdentifier, scheduleId, taskId) {
-    return await makeRequest('DELETE', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/tasks/${taskId}`);
+async function deleteScheduleTask(serverIdentifier, scheduleId, taskId, pterodactylUserId) {
+    return await makeClientRequest('DELETE', `/client/servers/${serverIdentifier}/schedules/${scheduleId}/tasks/${taskId}`, null, pterodactylUserId);
 }
 
 // ============================================
@@ -695,26 +888,26 @@ async function deleteScheduleTask(serverIdentifier, scheduleId, taskId) {
 // ============================================
 
 // List databases for a server
-async function listDatabases(serverIdentifier) {
-    return await makeRequest('GET', `/client/servers/${serverIdentifier}/databases`);
+async function listDatabases(serverIdentifier, pterodactylUserId) {
+    return await makeClientRequest('GET', `/client/servers/${serverIdentifier}/databases`, null, pterodactylUserId);
 }
 
 // Create a database
-async function createDatabase(serverIdentifier, database, remote = '%') {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/databases`, {
+async function createDatabase(serverIdentifier, database, remote = '%', pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/databases`, {
         database: database,
         remote: remote
-    });
+    }, pterodactylUserId);
 }
 
 // Rotate database password
-async function rotateDatabasePassword(serverIdentifier, databaseId) {
-    return await makeRequest('POST', `/client/servers/${serverIdentifier}/databases/${databaseId}/rotate-password`);
+async function rotateDatabasePassword(serverIdentifier, databaseId, pterodactylUserId) {
+    return await makeClientRequest('POST', `/client/servers/${serverIdentifier}/databases/${databaseId}/rotate-password`, null, pterodactylUserId);
 }
 
 // Delete a database
-async function deleteDatabase(serverIdentifier, databaseId) {
-    return await makeRequest('DELETE', `/client/servers/${serverIdentifier}/databases/${databaseId}`);
+async function deleteDatabase(serverIdentifier, databaseId, pterodactylUserId) {
+    return await makeClientRequest('DELETE', `/client/servers/${serverIdentifier}/databases/${databaseId}`, null, pterodactylUserId);
 }
 
 // Suspend server
@@ -736,6 +929,65 @@ async function deleteServer(serverId) {
 async function getAllUsers() {
     // Request up to 100 users per page to reduce API calls
     return await makeRequest('GET', '/application/users?per_page=100');
+}
+
+// Get all users with full pagination (returns all pages combined)
+async function getAllUsersPaginated() {
+    const allUsers = [];
+    let page = 1;
+    let hasMorePages = true;
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pterodactyl.js:getAllUsersPaginated:start',message:'Starting user fetch',data:{page},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    while (hasMorePages) {
+        const response = await makeRequest('GET', `/application/users?per_page=100&page=${page}`);
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pterodactyl.js:getAllUsersPaginated:response',message:'API response received',data:{page,success:response?.success,hasData:!!response?.data,dataKeys:response?.data?Object.keys(response.data):[],rawResponseType:typeof response?.data},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        
+        // Handle error response
+        if (!response || !response.success) {
+            console.error('Error fetching users from Pterodactyl:', response?.error || 'Unknown error');
+            throw new Error(response?.error || 'Failed to fetch users from Pterodactyl');
+        }
+        
+        // Pterodactyl API returns: { data: [...users...], meta: {...} }
+        // makeRequest wraps it as: { success: true, data: { data: [...], meta: {...} } }
+        const pterodactylResponse = response.data;
+        
+        if (pterodactylResponse && pterodactylResponse.data && Array.isArray(pterodactylResponse.data)) {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pterodactyl.js:getAllUsersPaginated:usersFound',message:'Users found in response',data:{page,userCount:pterodactylResponse.data.length,sampleUser:pterodactylResponse.data[0]?{hasAttributes:!!pterodactylResponse.data[0].attributes,keys:Object.keys(pterodactylResponse.data[0])}:null},timestamp:Date.now(),hypothesisId:'A,C'})}).catch(()=>{});
+            // #endregion
+            
+            allUsers.push(...pterodactylResponse.data);
+            
+            // Check if there are more pages
+            if (pterodactylResponse.meta && pterodactylResponse.meta.pagination) {
+                const { current_page, total_pages } = pterodactylResponse.meta.pagination;
+                hasMorePages = current_page < total_pages;
+                page++;
+            } else {
+                hasMorePages = false;
+            }
+        } else {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pterodactyl.js:getAllUsersPaginated:noData',message:'No data in response',data:{page,pterodactylResponse:pterodactylResponse?Object.keys(pterodactylResponse):null},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            // No more data or invalid response
+            hasMorePages = false;
+        }
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/3d7c3224-6c27-42cb-873a-ef2778fb9c27',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'pterodactyl.js:getAllUsersPaginated:complete',message:'Fetch complete',data:{totalUsers:allUsers.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
+    return allUsers;
 }
 
 // Get user by ID
@@ -994,6 +1246,7 @@ module.exports = {
     unsuspendServer,
     deleteServer,
     getAllUsers,
+    getAllUsersPaginated,
     getUser,
     createUser,
     deleteUser,

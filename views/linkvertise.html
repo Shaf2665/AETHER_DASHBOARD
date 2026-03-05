@@ -50,10 +50,26 @@
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">Admin Panel</span>
                 </a>
-                <a href="/admin/settings" class="nav-item admin-only" data-page="admin-settings" style="display: none;">
-                    <span class="nav-icon">🎨</span>
-                    <span class="nav-text">Admin Settings</span>
-                </a>
+                <!-- Admin Settings Dropdown -->
+                <div class="nav-dropdown admin-only" style="display: none;">
+                    <div class="nav-dropdown-toggle">
+                        <div class="nav-dropdown-left">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Admin Settings</span>
+                        </div>
+                        <span class="nav-dropdown-arrow">▼</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="/admin/settings/themes" class="nav-item" data-page="admin-themes">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Themes</span>
+                        </a>
+                        <a href="/admin/settings/branding" class="nav-item" data-page="admin-branding">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">Branding</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
@@ -103,6 +119,7 @@
     
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             initMobileMenu();
@@ -111,6 +128,26 @@
             await loadCompletionHistory();
             checkAdminAccess();
             loadBrandingSettings();
+        });
+        
+        // BUGFIX: Clean up cooldown timers on page unload to prevent memory leaks
+        window.addEventListener('beforeunload', () => {
+            Object.keys(cooldownTimers).forEach(linkId => {
+                if (cooldownTimers[linkId]) {
+                    clearInterval(cooldownTimers[linkId]);
+                    delete cooldownTimers[linkId];
+                }
+            });
+        });
+        
+        // Also clean up when navigating away (for SPA-like behavior)
+        window.addEventListener('pagehide', () => {
+            Object.keys(cooldownTimers).forEach(linkId => {
+                if (cooldownTimers[linkId]) {
+                    clearInterval(cooldownTimers[linkId]);
+                    delete cooldownTimers[linkId];
+                }
+            });
         });
         
         async function loadLinks() {
@@ -320,7 +357,7 @@
                 html += `
                     <div style="padding: 12px; background: rgba(30, 30, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(124, 58, 237, 0.2); border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong style="color: #f8fafc; font-weight: 600;">${completion.link_title || 'Link #' + completion.link_id}</strong>
+                            <strong style="color: #f8fafc; font-weight: 600;">${escapeHtml(completion.link_title || 'Link #' + completion.link_id)}</strong>
                             <div style="color: #cbd5e1; font-size: 12px; margin-top: 4px;">
                                 ${formatDate(completion.completed_at)}
                             </div>
@@ -333,6 +370,21 @@
             });
             html += '</div>';
             container.innerHTML = html;
+        }
+        
+        // Helper function to escape HTML (fallback if main.js hasn't loaded)
+        function escapeHtml(text) {
+            if (text === null || text === undefined) {
+                return '';
+            }
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
         }
     </script>
 </body>

@@ -146,7 +146,61 @@ pm2 restart aether-dashboard
 
 ## 📝 Version Changelog
 
-### Version 1.3 (Latest) 🎉
+### Version 1.3.1 (Latest) 🎉
+
+**Release Date:** March 2026
+
+**Status:** Production Ready ✅
+
+**🔧 This is a bug fix and stability release** that addresses critical issues found in production and improves error handling across the dashboard.
+
+**Bug Fixes:**
+
+| Bug | Description |
+|-----|-------------|
+| 🐛 **HTML Error Pages** | Fixed raw HTML error pages (like Cloudflare 504) being displayed to users. Now extracts readable error messages. |
+| 🐛 **409 Conflict Handling** | Server power actions and status checks now handle "server still installing" state gracefully with user-friendly messages. |
+| 🐛 **Power Actions with Default Admin** | Fixed power actions (Start/Stop/Restart) to work with default dashboard admin account (no longer requires Pterodactyl user linking). |
+| 🐛 **Panel Disconnect** | Fixed disconnect panel feature to properly remove imported users from database and update Total Users count. |
+| 🐛 **Linkvertise Security** | Added missing `escapeHtml` function to prevent XSS vulnerabilities in link titles/URLs. |
+| 🐛 **Linkvertise Validation** | Added validation to prevent completing deleted/inactive links and ensure link exists before awarding coins. |
+| 🐛 **Linkvertise Cooldown** | Fixed link ID type inconsistency that caused cooldown checks to fail. Now handles both string and integer IDs. |
+| 🐛 **Linkvertise Race Condition** | Wrapped completion recording and coin addition in database transaction for atomicity. |
+| 🐛 **Linkvertise Timestamp Parsing** | Improved timestamp parsing with error handling to prevent cooldown calculation failures. |
+| 🐛 **Linkvertise Memory Leak** | Added timer cleanup on page unload to prevent memory leaks from orphaned cooldown timers. |
+
+**Improvements:**
+
+- 🛡️ **Better Error Handling** - HTML error pages now show readable messages instead of raw HTML
+- ⚡ **Transient Error Handling** - 409 Conflict responses show info messages instead of errors, with auto-retry
+- 🔄 **Auto-Refresh** - Total Users card and Users list now refresh automatically after panel disconnect
+- 💾 **Transaction Support** - Added database transaction helper for atomic operations
+- 🔒 **Security Enhancements** - Better input validation and XSS prevention in Linkvertise component
+- 📊 **UI Improvements** - Better error messages and user feedback throughout the dashboard
+
+**Database Changes:**
+
+- ✅ Added `client_api_key` column to `pterodactyl_config` table (automatic migration)
+- ✅ Added `client_api_key` column to `users` table (automatic migration)
+- ✅ All migrations run automatically on startup
+
+**How to Update:**
+
+```bash
+# GitHub method (recommended)
+cd AETHER_PANEL
+git pull origin main
+npm install
+pm2 restart aether-dashboard
+```
+
+Or via SFTP: Download latest version, replace files (keep database.db and .env), run `npm install`, restart dashboard.
+
+**⚠️ Important:** Always backup `database.db` and `.env` before updating!
+
+---
+
+### Version 1.3 🎉
 
 **Release Date:** March 2026
 
@@ -474,7 +528,7 @@ If you encounter issues during updates:
 
 ---
 
-**Last Updated:** Version 1.3
+**Last Updated:** Version 1.3.1
 
 **Made with ❤️ for free hosting providers**
 

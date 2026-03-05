@@ -42,6 +42,7 @@ function initializeDatabase() {
                     purchased_cpu INTEGER DEFAULT 0,
                     purchased_storage INTEGER DEFAULT 0,
                     pterodactyl_user_id TEXT,
+                    client_api_key TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             `, (err) => {
@@ -72,6 +73,9 @@ function initializeDatabase() {
                         }
                         if (!columnNames.includes('pterodactyl_user_id')) {
                             columnsToAdd.push({ name: 'pterodactyl_user_id', type: 'TEXT' });
+                        }
+                        if (!columnNames.includes('client_api_key')) {
+                            columnsToAdd.push({ name: 'client_api_key', type: 'TEXT' });
                         }
                         
                         // Add missing columns
@@ -289,6 +293,7 @@ function initializeDatabase() {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     panel_url TEXT,
                     api_key TEXT,
+                    client_api_key TEXT,
                     last_connected_at TEXT,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
@@ -299,6 +304,23 @@ function initializeDatabase() {
                     return;
                 }
                 console.log('✅ Pterodactyl_Config table created/verified');
+                
+                // Check if client_api_key column exists, add if not
+                db.all("PRAGMA table_info(pterodactyl_config)", (err, columns) => {
+                    if (!err) {
+                        const columnNames = columns.map(col => col.name);
+                        if (!columnNames.includes('client_api_key')) {
+                            console.log('🔄 Adding client_api_key column to pterodactyl_config table...');
+                            db.run('ALTER TABLE pterodactyl_config ADD COLUMN client_api_key TEXT', (err) => {
+                                if (err) {
+                                    console.error('Error adding client_api_key column:', err);
+                                } else {
+                                    console.log('✅ client_api_key column added');
+                                }
+                            });
+                        }
+                    }
+                });
             });
 
             // Create Pterodactyl_Eggs table (cache for fetched eggs)
@@ -414,6 +436,77 @@ function initializeDatabase() {
                         );
                     }
                 });
+            });
+
+            // ============================================
+            // Theme Settings Table (v1.3)
+            // ============================================
+            db.run(`
+                CREATE TABLE IF NOT EXISTS theme_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    
+                    -- Sidebar Theme
+                    sidebar_bg_type TEXT DEFAULT 'gradient',
+                    sidebar_color_1 TEXT DEFAULT '#7c3aed',
+                    sidebar_color_2 TEXT DEFAULT '#a855f7',
+                    sidebar_color_3 TEXT DEFAULT '#06b6d4',
+                    sidebar_gradient_direction TEXT DEFAULT '180deg',
+                    sidebar_text_color TEXT DEFAULT '#ffffff',
+                    sidebar_active_bg TEXT DEFAULT 'rgba(255, 255, 255, 0.25)',
+                    sidebar_hover_bg TEXT DEFAULT 'rgba(255, 255, 255, 0.15)',
+                    
+                    -- Main Frame Theme
+                    main_bg_type TEXT DEFAULT 'gradient',
+                    main_color_1 TEXT DEFAULT '#0a0e27',
+                    main_color_2 TEXT DEFAULT '#141b2d',
+                    main_color_3 TEXT DEFAULT '#1a1f3a',
+                    main_gradient_direction TEXT DEFAULT '135deg',
+                    
+                    -- Card Theme
+                    card_bg_color TEXT DEFAULT 'rgba(30, 30, 50, 0.6)',
+                    card_border_color TEXT DEFAULT 'rgba(124, 58, 237, 0.2)',
+                    card_text_color TEXT DEFAULT '#f8fafc',
+                    
+                    -- Accent Colors
+                    accent_primary TEXT DEFAULT '#7c3aed',
+                    accent_secondary TEXT DEFAULT '#a855f7',
+                    accent_tertiary TEXT DEFAULT '#06b6d4',
+                    accent_success TEXT DEFAULT '#10b981',
+                    accent_warning TEXT DEFAULT '#f59e0b',
+                    accent_danger TEXT DEFAULT '#ef4444',
+                    
+                    -- Input Theme
+                    input_bg_color TEXT DEFAULT 'rgba(30, 30, 50, 0.4)',
+                    input_border_color TEXT DEFAULT 'rgba(124, 58, 237, 0.3)',
+                    input_text_color TEXT DEFAULT '#f8fafc',
+                    input_placeholder_color TEXT DEFAULT '#94a3b8',
+                    
+                    -- Header Theme
+                    header_bg_color TEXT DEFAULT 'rgba(20, 27, 45, 0.8)',
+                    header_text_color TEXT DEFAULT '#f8fafc',
+                    
+                    -- Active Preset
+                    active_preset TEXT DEFAULT 'default',
+                    
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            `, (err) => {
+                if (err) {
+                    console.error('Error creating theme_settings table:', err);
+                } else {
+                    console.log('✅ Theme_Settings table created/verified');
+                    
+                    // Create default theme settings if table is empty
+                    db.get('SELECT id FROM theme_settings', (err, row) => {
+                        if (!err && !row) {
+                            db.run(`INSERT INTO theme_settings (active_preset) VALUES (?)`, ['default'], (err) => {
+                                if (!err) {
+                                    console.log('✅ Default theme settings created');
+                                }
+                            });
+                        }
+                    });
+                }
             });
 
             // ============================================
@@ -670,6 +763,46 @@ function close() {
     });
 }
 
+// Helper function to run transactions
+// Note: SQLite3 doesn't have native promise-based transactions, so we use a callback-based approach
+function transaction(callback) {
+    return new Promise((resolve, reject) => {
+        db.run('BEGIN TRANSACTION', (beginErr) => {
+            if (beginErr) {
+                reject(beginErr);
+                return;
+            }
+            
+            // Execute the callback (which should return a promise)
+            Promise.resolve(callback())
+                .then((result) => {
+                    db.run('COMMIT', (commitErr) => {
+                        if (commitErr) {
+                            // If commit fails, try to rollback
+                            db.run('ROLLBACK', (rollbackErr) => {
+                                if (rollbackErr) {
+                                    console.error('Error during rollback:', rollbackErr);
+                                }
+                                reject(commitErr);
+                            });
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                })
+                .catch((error) => {
+                    // Rollback on error
+                    db.run('ROLLBACK', (rollbackErr) => {
+                        if (rollbackErr) {
+                            console.error('Error during rollback:', rollbackErr);
+                        }
+                        reject(error);
+                    });
+                });
+        });
+    });
+}
+
 // Initialize database on module load
 initializeDatabase().catch(console.error);
 
@@ -678,6 +811,7 @@ module.exports = {
     query,
     get,
     run,
+    transaction,
     close,
     initializeDatabase
 };

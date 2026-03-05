@@ -50,10 +50,26 @@
                     <span class="nav-icon">🛡️</span>
                     <span class="nav-text">Admin Panel</span>
                 </a>
-                <a href="/admin/settings" class="nav-item admin-only" data-page="admin-settings" style="display: none;">
-                    <span class="nav-icon">🎨</span>
-                    <span class="nav-text">Admin Settings</span>
-                </a>
+                <!-- Admin Settings Dropdown -->
+                <div class="nav-dropdown admin-only" style="display: none;">
+                    <div class="nav-dropdown-toggle">
+                        <div class="nav-dropdown-left">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Admin Settings</span>
+                        </div>
+                        <span class="nav-dropdown-arrow">▼</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="/admin/settings/themes" class="nav-item" data-page="admin-themes">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Themes</span>
+                        </a>
+                        <a href="/admin/settings/branding" class="nav-item" data-page="admin-branding">
+                            <span class="nav-icon">✨</span>
+                            <span class="nav-text">Branding</span>
+                        </a>
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
@@ -147,6 +163,7 @@
     
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
+    <script src="/js/theme.js"></script>
     <script>
         let resourcePrices = {
             ram_coins_per_set: 1,

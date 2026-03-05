@@ -58,7 +58,12 @@ function checkAdminAccess() {
             if (data.user && data.user.is_admin) {
                 // Show all admin-only items
                 document.querySelectorAll('.admin-only').forEach(item => {
-                    item.style.display = 'flex';  // This overrides inline style="display: none;"
+                    // Use 'block' for dropdown containers, 'flex' for nav items
+                    if (item.classList.contains('nav-dropdown')) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'flex';
+                    }
                 });
             } else {
                 // Hide admin items if not admin

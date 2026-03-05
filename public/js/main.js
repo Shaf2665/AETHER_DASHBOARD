@@ -94,8 +94,23 @@ async function apiRequest(url, options = {}) {
     }
 }
 
+// Setup dropdown toggle for Admin Settings menu
+function setupDropdownToggle() {
+    document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dropdown = this.closest('.nav-dropdown');
+            dropdown.classList.toggle('open');
+        });
+    });
+}
+
 // Mobile menu toggle functionality
 function initMobileMenu() {
+    // Setup dropdown toggle for Admin Settings
+    setupDropdownToggle();
+    
     const menuBtn = document.getElementById('mobileMenuBtn');
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebarOverlay');

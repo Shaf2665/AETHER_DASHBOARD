@@ -1,20 +1,58 @@
 /* Dashboard Specific Styles */
 /* Modern Dark Theme with Glassmorphism */
+/* Version 1.3 - CSS Variables for Theme Customization */
+
+/* CSS Variables - Default Theme */
+:root {
+    /* Sidebar */
+    --sidebar-bg: linear-gradient(180deg, #7c3aed 0%, #a855f7 50%, #06b6d4 100%);
+    --sidebar-text: #ffffff;
+    --sidebar-active-bg: rgba(255, 255, 255, 0.25);
+    --sidebar-hover-bg: rgba(255, 255, 255, 0.15);
+    
+    /* Main Frame */
+    --main-bg: linear-gradient(135deg, #0a0e27 0%, #141b2d 50%, #1a1f3a 100%);
+    
+    /* Cards */
+    --card-bg: rgba(30, 30, 50, 0.6);
+    --card-border: rgba(124, 58, 237, 0.2);
+    --card-text: #f8fafc;
+    
+    /* Accents */
+    --accent-primary: #7c3aed;
+    --accent-secondary: #a855f7;
+    --accent-tertiary: #06b6d4;
+    --accent-success: #10b981;
+    --accent-warning: #f59e0b;
+    --accent-danger: #ef4444;
+    --accent-primary-rgb: 124, 58, 237;
+    --accent-secondary-rgb: 168, 85, 247;
+    
+    /* Inputs */
+    --input-bg: rgba(30, 30, 50, 0.4);
+    --input-border: rgba(124, 58, 237, 0.3);
+    --input-text: #f8fafc;
+    --input-placeholder: #94a3b8;
+    
+    /* Header */
+    --header-bg: rgba(20, 27, 45, 0.8);
+    --header-text: #f8fafc;
+}
 
 .dashboard-container {
     display: flex;
     min-height: 100vh;
-    background: linear-gradient(135deg, #0a0e27 0%, #141b2d 50%, #1a1f3a 100%);
+    background: var(--main-bg);
     background-attachment: fixed;
 }
 
 /* Sidebar */
 .sidebar {
     width: 260px;
-    background: linear-gradient(180deg, #7c3aed 0%, #a855f7 50%, #06b6d4 100%);
+    background: var(--sidebar-bg);
     background-size: 200% 200%;
     animation: gradientShift 8s ease infinite;
-    color: white;
+    color: var(--sidebar-text);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -98,7 +136,8 @@
     display: flex;
     align-items: center;
     padding: 14px 24px;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--sidebar-text);
+    opacity: 0.9;
     text-decoration: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: 3px solid transparent;
@@ -107,20 +146,119 @@
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border-left-color: white;
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text);
+    opacity: 1;
+    border-left-color: var(--sidebar-text);
     transform: translateX(4px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .nav-item.active {
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    border-left-color: white;
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-text);
+    opacity: 1;
+    border-left-color: var(--sidebar-text);
     font-weight: 600;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3),
                 inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+/* Dropdown Menu Styles */
+.nav-dropdown {
+    position: relative;
+}
+
+.nav-dropdown-toggle {
+    display: flex;
+    align-items: center;
+    padding: 14px 24px;
+    color: var(--sidebar-text);
+    opacity: 0.9;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 3px solid transparent;
+    margin: 2px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    justify-content: space-between;
+}
+
+.nav-dropdown-toggle:hover {
+    background: var(--sidebar-hover-bg);
+    color: var(--sidebar-text);
+    opacity: 1;
+    border-left-color: var(--sidebar-text);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.nav-dropdown-toggle.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-text);
+    opacity: 1;
+    border-left-color: var(--sidebar-text);
+}
+
+.nav-dropdown-left {
+    display: flex;
+    align-items: center;
+}
+
+.nav-dropdown-arrow {
+    font-size: 12px;
+    transition: transform 0.3s ease;
+    margin-left: auto;
+}
+
+.nav-dropdown.open .nav-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.nav-dropdown-menu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    background: rgba(0, 0, 0, 0.15);
+    margin: 0 12px;
+    border-radius: 0 0 8px 8px;
+}
+
+.nav-dropdown.open .nav-dropdown-menu {
+    max-height: 200px;
+    opacity: 1;
+}
+
+.nav-dropdown-menu .nav-item {
+    padding: 12px 20px 12px 44px;
+    margin: 0;
+    border-radius: 0;
+    border-left: none;
+    font-size: 14px;
+}
+
+.nav-dropdown-menu .nav-item:first-child {
+    border-radius: 8px 8px 0 0;
+}
+
+.nav-dropdown-menu .nav-item:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.nav-dropdown-menu .nav-item:hover {
+    transform: translateX(4px);
+    border-left: none;
+}
+
+.nav-dropdown-menu .nav-item.active {
+    border-left: none;
+    background: var(--sidebar-active-bg);
+}
+
+.nav-dropdown-menu .nav-icon {
+    font-size: 16px;
+    margin-right: 10px;
 }
 
 .nav-icon {
@@ -150,16 +288,16 @@
 }
 
 .dashboard-header {
-    background: rgba(20, 27, 45, 0.8);
+    background: var(--header-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     padding: 24px 32px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(124, 58, 237, 0.1);
+                0 0 0 1px rgba(var(--accent-primary-rgb), 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    border-bottom: 1px solid var(--card-border);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -168,7 +306,7 @@
 .dashboard-header h1 {
     font-size: 28px;
     font-weight: 700;
-    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+    background: linear-gradient(135deg, var(--header-text) 0%, #cbd5e1 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -180,7 +318,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #06b6d4 100%);
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 50%, var(--accent-tertiary) 100%);
     background-size: 200% 200%;
     animation: gradientShift 3s ease infinite;
     color: white;
@@ -188,7 +326,7 @@
     border-radius: 12px;
     font-size: 18px;
     font-weight: 600;
-    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4),
+    box-shadow: 0 4px 20px rgba(var(--accent-primary-rgb), 0.4),
                 0 0 0 1px rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
 }
@@ -217,14 +355,14 @@
 }
 
 .stat-card {
-    background: rgba(30, 30, 50, 0.6);
+    background: var(--card-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-radius: 16px;
     padding: 24px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(124, 58, 237, 0.2);
-    border: 1px solid rgba(124, 58, 237, 0.2);
+                0 0 0 1px var(--card-border);
+    border: 1px solid var(--card-border);
     display: flex;
     align-items: center;
     gap: 20px;
@@ -240,7 +378,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #7c3aed, #a855f7, #06b6d4);
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -248,9 +386,9 @@
 .stat-card:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(124, 58, 237, 0.4),
-                0 0 40px rgba(124, 58, 237, 0.2);
-    border-color: rgba(124, 58, 237, 0.4);
+                0 0 0 1px rgba(var(--accent-primary-rgb), 0.4),
+                0 0 40px rgba(var(--accent-primary-rgb), 0.2);
+    border-color: rgba(var(--accent-primary-rgb), 0.4);
 }
 
 .stat-card:hover::before {
@@ -264,11 +402,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #06b6d4 100%);
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 50%, var(--accent-tertiary) 100%);
     background-size: 200% 200%;
     animation: gradientShift 3s ease infinite;
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4),
+    box-shadow: 0 4px 20px rgba(var(--accent-primary-rgb), 0.4),
                 inset 0 0 20px rgba(255, 255, 255, 0.1);
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
@@ -276,7 +414,7 @@
 .stat-info h3 {
     font-size: 32px;
     font-weight: 700;
-    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+    background: linear-gradient(135deg, var(--card-text) 0%, #cbd5e1 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -284,7 +422,7 @@
 }
 
 .stat-info p {
-    color: #94a3b8;
+    color: var(--input-placeholder);
     margin: 0;
     font-size: 14px;
     font-weight: 500;
@@ -292,27 +430,27 @@
 
 /* Quick Actions */
 .quick-actions {
-    background: rgba(30, 30, 50, 0.6);
+    background: var(--card-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-radius: 16px;
     padding: 24px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(124, 58, 237, 0.2);
-    border: 1px solid rgba(124, 58, 237, 0.2);
+                0 0 0 1px var(--card-border);
+    border: 1px solid var(--card-border);
     transition: all 0.3s ease;
 }
 
 .quick-actions:hover {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(124, 58, 237, 0.3),
-                0 0 30px rgba(124, 58, 237, 0.1);
+                0 0 0 1px rgba(var(--accent-primary-rgb), 0.3),
+                0 0 30px rgba(var(--accent-primary-rgb), 0.1);
 }
 
 .quick-actions h2 {
     font-size: 24px;
     font-weight: 600;
-    background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+    background: linear-gradient(135deg, var(--card-text) 0%, #cbd5e1 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
