@@ -975,7 +975,7 @@
                 if (data.success) {
                     renderDatabases(data.databases);
                 } else {
-                    databaseList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${data.message || 'Failed to load databases'}</p>`;
+                    databaseList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${escapeHtml(data.message || 'Failed to load databases')}</p>`;
                 }
             } catch (error) {
                 console.error('Error loading databases:', error);
@@ -1128,7 +1128,7 @@
                 if (data.success) {
                     renderSchedules(data.schedules);
                 } else {
-                    scheduleList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${data.message || 'Failed to load schedules'}</p>`;
+                    scheduleList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${escapeHtml(data.message || 'Failed to load schedules')}</p>`;
                 }
             } catch (error) {
                 console.error('Error loading schedules:', error);
@@ -1344,7 +1344,7 @@
                 if (data.success) {
                     renderBackups(data.backups);
                 } else {
-                    backupList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${data.message || 'Failed to load backups'}</p>`;
+                    backupList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${escapeHtml(data.message || 'Failed to load backups')}</p>`;
                 }
             } catch (error) {
                 console.error('Error loading backups:', error);
@@ -1535,7 +1535,7 @@
                 if (data.success) {
                     renderFiles(data.files);
                 } else {
-                    fileList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${data.message || 'Failed to load files'}</p>`;
+                    fileList.innerHTML = `<p style="color: #ef4444; padding: 20px; text-align: center;">${escapeHtml(data.message || 'Failed to load files')}</p>`;
                 }
             } catch (error) {
                 console.error('Error loading files:', error);

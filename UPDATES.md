@@ -146,7 +146,59 @@ pm2 restart aether-dashboard
 
 ## 📝 Version Changelog
 
-### Version 1.3.3 (Latest) 🎉
+### Version 1.3.4 (Latest) 🎉
+
+**Release Date:** March 2026
+
+**Status:** Production Ready ✅
+
+**🔒 This release focuses on critical security enhancements, rate limiting, and improved error handling.**
+
+**Security Enhancements:**
+
+| Feature | Description |
+|---------|-------------|
+| 🛡️ **XSS Protection** | Fixed XSS vulnerabilities by properly escaping user-controlled data in all innerHTML operations. All user input and API responses are now sanitized before display. |
+| ⏱️ **Rate Limiting** | Added comprehensive rate limiting to prevent abuse: Authentication endpoints (5 attempts/15min), Server creation (10/hour), Purchases (30/10min), Linkvertise (20/5min). |
+| 🔄 **Improved Cleanup** | Enhanced server creation cleanup logic with centralized cleanup function to handle all edge cases and prevent resource leaks. |
+
+**Bug Fixes:**
+
+| Bug | Description |
+|-----|-------------|
+| 🐛 **XSS Vulnerabilities** | Fixed multiple XSS vulnerabilities in admin panel, server details, and linkvertise views by using escapeHtml() for all user-controlled data. |
+| 🐛 **Server Creation Cleanup** | Improved cleanup logic to ensure placeholder server records and claimed allocations are always released on error, preventing resource leaks. |
+| 🐛 **Rate Limit Bypass** | Added rate limiting to prevent brute-force attacks and resource exhaustion attacks on authentication and API endpoints. |
+
+**Improvements:**
+
+- 🔒 **Security First** - All user input is now properly sanitized before display
+- ⚡ **Performance** - Rate limiting prevents abuse and ensures fair resource usage
+- 🧹 **Code Quality** - Centralized cleanup function reduces code duplication
+- 🛡️ **Protection** - Multiple layers of protection against common attack vectors
+- 📊 **Monitoring** - Rate limit headers provide visibility into request patterns
+
+**Dependencies:**
+
+- Added `express-rate-limit` package for rate limiting functionality
+
+**How to Update:**
+
+```bash
+# GitHub method (recommended)
+cd AETHER_PANEL
+git pull origin main
+npm install
+pm2 restart aether-dashboard
+```
+
+Or via SFTP: Download latest version, replace files (keep database.db and .env), run `npm install`, restart dashboard.
+
+**⚠️ Important:** Always backup `database.db` and `.env` before updating!
+
+---
+
+### Version 1.3.3 🎉
 
 **Release Date:** March 2026
 
@@ -627,7 +679,7 @@ If you encounter issues during updates:
 
 ---
 
-**Last Updated:** Version 1.3.3
+**Last Updated:** Version 1.3.4
 
 **Made with ❤️ for free hosting providers**
 

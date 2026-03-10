@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const { query, get, run, transaction } = require('../config/database');
+const { linkvertiseLimiter } = require('../middleware/rateLimit');
 
 // Middleware to check if user is logged in
 const requireAuth = (req, res, next) => {
@@ -101,7 +102,7 @@ router.get('/api/links', requireAuth, async (req, res) => {
 });
 
 // API endpoint to complete a link and earn coins
-router.post('/api/complete', requireAuth, async (req, res) => {
+router.post('/api/complete', requireAuth, linkvertiseLimiter, async (req, res) => {
     try {
         const { link_id } = req.body;
         

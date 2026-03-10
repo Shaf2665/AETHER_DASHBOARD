@@ -257,7 +257,7 @@
                 
                 if (cooldownElement) {
                     if (remaining > 0) {
-                        cooldownElement.innerHTML = `⏱️ Available in <strong>${remaining}</strong> second${remaining !== 1 ? 's' : ''}`;
+                        cooldownElement.innerHTML = `⏱️ Available in <strong>${escapeHtml(String(remaining))}</strong> second${remaining !== 1 ? 's' : ''}`;
                     } else {
                         cooldownElement.innerHTML = '';
                         // Reload links to update status

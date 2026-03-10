@@ -1919,7 +1919,7 @@
                         color = '#f87171'; // red
                     }
                     
-                    logEntry.innerHTML = `<span style="color: ${color};">[${data.percent}%] ${data.message}</span>`;
+                    logEntry.innerHTML = `<span style="color: ${color};">[${escapeHtml(String(data.percent))}%] ${escapeHtml(data.message)}</span>`;
                     statusLog.appendChild(logEntry);
                     statusLog.scrollTop = statusLog.scrollHeight; // Auto-scroll to bottom
                     

@@ -8,6 +8,7 @@ const bcrypt = require('bcrypt');
 const passport = require('passport');
 const { get, run } = require('../config/database');
 const { sanitizeBody, validateSignup, validateLogin } = require('../middleware/validation');
+const { authLimiter } = require('../middleware/rateLimit');
 const pterodactyl = require('../config/pterodactyl');
 
 // Middleware to check if user is logged in
@@ -47,7 +48,7 @@ router.get('/logout', (req, res) => {
 });
 
 // Login POST handler
-router.post('/login', sanitizeBody, validateLogin, async (req, res) => {
+router.post('/login', authLimiter, sanitizeBody, validateLogin, async (req, res) => {
     try {
         const { usernameOrEmail, password } = req.body;
 
@@ -113,7 +114,7 @@ router.post('/login', sanitizeBody, validateLogin, async (req, res) => {
 });
 
 // Signup POST handler
-router.post('/signup', sanitizeBody, validateSignup, async (req, res) => {
+router.post('/signup', authLimiter, sanitizeBody, validateSignup, async (req, res) => {
     try {
         const { username, email, password } = req.body;
 

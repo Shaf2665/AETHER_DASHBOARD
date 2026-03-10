@@ -4,13 +4,13 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 
 **Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
-**Version:** 1.3.3
+**Version:** 1.3.4
 
 **Status:** Production Ready ✅
 
 **📦 Want to update?** See the [Update Guide](UPDATES.md) for instructions on how to update to the latest version!
 
-**🔧 Latest Update (v1.3.3):** User management enhancements, disconnect panel improvements, and UI refresh fixes - See [Changelog](UPDATES.md#version-133-latest-) for details.
+**🔧 Latest Update (v1.3.4):** Security enhancements - XSS protection, rate limiting, and improved server creation cleanup - See [Changelog](UPDATES.md#version-134-latest-) for details.
 
 ---
 
@@ -340,14 +340,13 @@ sudo yum install git -y  # CentOS/RHEL
 
 **Step 4.2: Clone the repository**
 ```bash
-git clone https://github.com/your-username/AETHER_PANEL.git
+git clone https://github.com/Shaf2665/AETHER_DASHBOARD.git
 ```
 
-**Replace `your-username/AETHER_PANEL` with your actual GitHub repository**
 
 **Step 4.3: Go into the folder**
 ```bash
-cd AETHER_PANEL
+cd AETHER_DASHBOARD
 ```
 
 **✅ You should now be in the dashboard folder!**
@@ -1177,4 +1176,4 @@ MIT License - Feel free to use, modify, and distribute!
 
 **Made with ❤️ for free hosting providers. Start earning revenue today!** 🚀💰
 
-**Version 1.3.3** - Production Ready ✅
+**Version 1.3.4** - Production Ready ✅

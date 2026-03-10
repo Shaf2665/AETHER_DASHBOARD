@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const { query, get, run, transaction } = require('../config/database');
+const { serverCreationLimiter, purchaseLimiter } = require('../middleware/rateLimit');
 const pterodactyl = require('../config/pterodactyl');
 
 // Middleware to check if user is logged in
@@ -92,8 +93,43 @@ router.get('/api/panel-url', requireAuth, async (req, res) => {
     }
 });
 
+// Helper function to cleanup server creation resources
+async function cleanupServerCreation(serverRecordId, claimedAllocationId) {
+    const cleanupErrors = [];
+    
+    // Delete placeholder server record if it exists
+    if (serverRecordId) {
+        try {
+            await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
+            console.log(`Cleaned up placeholder server record ${serverRecordId}`);
+        } catch (error) {
+            cleanupErrors.push(`Failed to delete server record: ${error.message}`);
+            console.error('Failed to delete placeholder server record:', error);
+        }
+    }
+    
+    // Release claimed allocation back to pool if it exists
+    if (claimedAllocationId) {
+        try {
+            await run('UPDATE pterodactyl_allocations SET is_active = 1 WHERE id = ?', [claimedAllocationId]);
+            console.log(`Released allocation ${claimedAllocationId} back to pool`);
+        } catch (error) {
+            cleanupErrors.push(`Failed to release allocation: ${error.message}`);
+            console.error('Failed to release allocation:', error);
+        }
+    }
+    
+    if (cleanupErrors.length > 0) {
+        console.warn('Some cleanup operations failed:', cleanupErrors);
+    }
+}
+
 // API endpoint to create server
-router.post('/api/create', requireAuth, async (req, res) => {
+router.post('/api/create', requireAuth, serverCreationLimiter, async (req, res) => {
+    let pterodactyl_id = null;
+    let claimedAllocationId = null;  // Track claimed allocation for cleanup on error
+    let serverRecordId = null; // Track server record ID for rollback if Pterodactyl fails
+    
     try {
         const { name, egg_id, ram, cpu, storage } = req.body;
         
@@ -152,9 +188,6 @@ router.post('/api/create', requireAuth, async (req, res) => {
         
         // BUGFIX: Use transaction to atomically check resources and reserve them
         // This prevents race conditions where multiple concurrent requests could oversell resources
-        let pterodactyl_id = null;
-        let claimedAllocationId = null;  // BUGFIX #16: Track claimed allocation for cleanup on error
-        let serverRecordId = null; // Track server record ID for rollback if Pterodactyl fails
         
         // Atomically check resources and insert server record
         await transaction(async () => {
@@ -260,14 +293,8 @@ router.post('/api/create', requireAuth, async (req, res) => {
                 `);
                 
                 if (!allocation) {
-                    // Delete placeholder server record since no allocation available
-                    if (serverRecordId) {
-                        try {
-                            await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
-                        } catch (deleteError) {
-                            console.error('Failed to delete placeholder server record:', deleteError);
-                        }
-                    }
+                    // Cleanup resources since no allocation available
+                    await cleanupServerCreation(serverRecordId, claimedAllocationId);
                     return res.status(400).json({ 
                         success: false, 
                         message: 'No available server allocations. Please contact an administrator.' 
@@ -283,14 +310,8 @@ router.post('/api/create', requireAuth, async (req, res) => {
                 
                 // If no rows were updated, another request claimed this allocation
                 if (claimResult.changes === 0) {
-                    // Delete placeholder server record since allocation was claimed by another request
-                    if (serverRecordId) {
-                        try {
-                            await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
-                        } catch (deleteError) {
-                            console.error('Failed to delete placeholder server record:', deleteError);
-                        }
-                    }
+                    // Cleanup resources since allocation was claimed by another request
+                    await cleanupServerCreation(serverRecordId, null); // No allocation was claimed
                     return res.status(409).json({ 
                         success: false, 
                         message: 'Server allocation was claimed by another request. Please try again.' 
@@ -336,21 +357,8 @@ router.post('/api/create', requireAuth, async (req, res) => {
                 const pterodactylUserId = pterodactylUser?.pterodactyl_user_id;
                 
                 if (!pterodactylUserId) {
-                    // Delete placeholder server record and release allocation
-                    if (serverRecordId) {
-                        try {
-                            await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
-                        } catch (deleteError) {
-                            console.error('Failed to delete placeholder server record:', deleteError);
-                        }
-                    }
-                    if (claimedAllocationId) {
-                        try {
-                            await run('UPDATE pterodactyl_allocations SET is_active = 1 WHERE id = ?', [claimedAllocationId]);
-                        } catch (releaseError) {
-                            console.error('Failed to release allocation:', releaseError);
-                        }
-                    }
+                    // Cleanup resources since user not found
+                    await cleanupServerCreation(serverRecordId, claimedAllocationId);
                     return res.status(400).json({ 
                         success: false, 
                         message: 'Pterodactyl user not found. Please contact an administrator.' 
@@ -399,23 +407,8 @@ router.post('/api/create', requireAuth, async (req, res) => {
                     
                     console.error('Pterodactyl server creation failed:', errorMessage);
                     
-                    // BUGFIX: Delete the placeholder server record to release reserved resources
-                    if (serverRecordId) {
-                        try {
-                            await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
-                            console.log(`Deleted placeholder server record ${serverRecordId} after Pterodactyl creation failure`);
-                        } catch (deleteError) {
-                            console.error('Failed to delete placeholder server record:', deleteError);
-                        }
-                    }
-                    
-                    // BUGFIX #16: Release the allocation back to the pool since server creation failed
-                    try {
-                        await run('UPDATE pterodactyl_allocations SET is_active = 1 WHERE id = ?', [allocation.id]);
-                        console.log(`Allocation ${allocation.allocation_id} released back to pool after failed server creation`);
-                    } catch (releaseError) {
-                        console.error('Failed to release allocation:', releaseError);
-                    }
+                    // Cleanup resources since Pterodactyl creation failed
+                    await cleanupServerCreation(serverRecordId, claimedAllocationId);
                     
                     if (!res.headersSent) {
                         return res.status(500).json({ 
@@ -493,25 +486,8 @@ router.post('/api/create', requireAuth, async (req, res) => {
                 console.error('Error creating server in Pterodactyl:', error);
                 console.error('Error stack:', error.stack);
                 
-                // BUGFIX: Delete the placeholder server record to release reserved resources
-                if (serverRecordId) {
-                    try {
-                        await run('DELETE FROM servers WHERE id = ?', [serverRecordId]);
-                        console.log(`Deleted placeholder server record ${serverRecordId} after Pterodactyl creation error`);
-                    } catch (deleteError) {
-                        console.error('Failed to delete placeholder server record:', deleteError);
-                    }
-                }
-                
-                // BUGFIX #16: Release the claimed allocation if we had one
-                if (claimedAllocationId) {
-                    try {
-                        await run('UPDATE pterodactyl_allocations SET is_active = 1 WHERE id = ?', [claimedAllocationId]);
-                        console.log(`Released allocation ${claimedAllocationId} after server creation error`);
-                    } catch (releaseError) {
-                        console.error('Failed to release allocation on error:', releaseError);
-                    }
-                }
+                // Cleanup resources on error
+                await cleanupServerCreation(serverRecordId, claimedAllocationId);
                 
                 if (!res.headersSent) {
                     const errorMessage = error.message || 'Unknown error occurred';
@@ -543,6 +519,9 @@ router.post('/api/create', requireAuth, async (req, res) => {
     } catch (error) {
         console.error('Error creating server:', error);
         console.error('Error stack:', error.stack);
+        
+        // Cleanup resources on outer catch error (shouldn't happen, but safety net)
+        await cleanupServerCreation(serverRecordId, claimedAllocationId);
         
         if (!res.headersSent) {
             const errorMessage = error.message || 'Unknown error occurred';
@@ -1639,7 +1618,7 @@ router.get('/api/stats/:id', requireAuth, async (req, res) => {
 });
 
 // API endpoint to purchase resources
-router.post('/api/purchase-resource', requireAuth, async (req, res) => {
+router.post('/api/purchase-resource', requireAuth, purchaseLimiter, async (req, res) => {
     try {
         const { resource_type, amount } = req.body;
         
@@ -1811,7 +1790,7 @@ router.post('/api/purchase-resource', requireAuth, async (req, res) => {
 });
 
 // API endpoint to purchase server slot
-router.post('/api/purchase-slot', requireAuth, async (req, res) => {
+router.post('/api/purchase-slot', requireAuth, purchaseLimiter, async (req, res) => {
     try {
         // Get current prices from database
         const prices = await get('SELECT * FROM resource_prices ORDER BY id DESC LIMIT 1');
