@@ -1488,8 +1488,8 @@ router.get('/api/status/:id', requireAuth, async (req, res) => {
         if (!serverIdentifier) {
             return res.json({ 
                 success: true, 
-                status: 'unknown',
-                message: 'Server identifier not available'
+                status: 'installing',
+                message: 'Server identifier not available - server may still be installing'
             });
         }
         
@@ -1508,8 +1508,8 @@ router.get('/api/status/:id', requireAuth, async (req, res) => {
             
             return res.json({ 
                 success: true, 
-                status: 'unknown',
-                message: result.error || 'Could not fetch server status'
+                status: 'installing',
+                message: result.error || 'Could not fetch server status - server may still be installing'
             });
         }
         

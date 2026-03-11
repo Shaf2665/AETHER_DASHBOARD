@@ -4,13 +4,13 @@ A powerful dashboard for **free hosting providers** to monetize their services t
 
 **Perfect for hosting owners who want to earn revenue from their free hosting services!**
 
-**Version:** 1.3.4
+**Version:** 1.3.5
 
 **Status:** Production Ready ✅
 
 **📦 Want to update?** See the [Update Guide](UPDATES.md) for instructions on how to update to the latest version!
 
-**🔧 Latest Update (v1.3.4):** Security enhancements - XSS protection, rate limiting, and improved server creation cleanup - See [Changelog](UPDATES.md#version-134-latest-) for details.
+**🔧 Latest Update (v1.3.5):** Enhanced server status management - improved status transitions, synchronization between pages, CPU limit flexibility, and better user experience - See [Changelog](UPDATES.md#version-135-latest-) for details.
 
 ---
 
@@ -1176,4 +1176,4 @@ MIT License - Feel free to use, modify, and distribute!
 
 **Made with ❤️ for free hosting providers. Start earning revenue today!** 🚀💰
 
-**Version 1.3.4** - Production Ready ✅
+**Version 1.3.5** - Production Ready ✅

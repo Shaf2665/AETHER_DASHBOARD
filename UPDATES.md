@@ -17,7 +17,7 @@
 
 ```bash
 # Connect to your VPS via SSH
-cd AETHER_PANEL
+cd AETHER_DASHBOARD
 
 # Create a backup folder
 mkdir -p backups
@@ -45,7 +45,7 @@ cp .env backups/.env-$(date +%Y%m%d-%H%M%S)
 
 **Step 2: Go to your dashboard folder:**
 ```bash
-cd AETHER_PANEL
+cd AETHER_DASHBOARD
 ```
 
 **Step 3: Stop the dashboard (optional, but recommended):**
@@ -84,7 +84,7 @@ pm2 restart aether-dashboard
 
 **Step 2: Go to your dashboard folder:**
 ```bash
-cd AETHER_PANEL
+cd AETHER_DASHBOARD
 ```
 
 **Step 3: Stop the dashboard:**
@@ -146,7 +146,69 @@ pm2 restart aether-dashboard
 
 ## 📝 Version Changelog
 
-### Version 1.3.4 (Latest) 🎉
+### Version 1.3.5 (Latest) 🎉
+
+**Release Date:** March 2026
+
+**Status:** Production Ready ✅
+
+**🎯 This release focuses on enhanced server status management, improved user experience, and better synchronization between dashboard pages.**
+
+**New Features:**
+
+| Feature | Description |
+|---------|-------------|
+| 🔄 **Enhanced Status Transitions** | Improved server status flow: "Installing" → "Offline" → "Starting" → "Online" → "Stopping" → "Offline" with smooth transitions |
+| ⏸️ **Power Button Management** | Power control buttons (Start/Stop/Restart) are automatically disabled during server transitions to prevent multiple simultaneous actions |
+| 🔍 **Checking Status** | New "Checking..." status indicator when initially loading server status for better user feedback |
+| 📊 **Status Synchronization** | "Manage Servers" and "Live Status" pages now stay perfectly synchronized with consistent polling intervals (5 seconds) |
+| 💪 **CPU Limit Flexibility** | Removed 100% CPU limit restriction - users can now allocate CPU above 100% for better Minecraft server performance |
+
+**Bug Fixes:**
+
+| Bug | Description |
+|-----|-------------|
+| 🐛 **Intermediate Status Display** | Fixed issue where status would show "Online" briefly when stopping server - now shows "Stopping" → "Offline" directly |
+| 🐛 **Status Sync Issues** | Fixed synchronization problems between "Manage Servers" and "Live Status" pages - both now update consistently |
+| 🐛 **CPU Limit Restriction** | Removed artificial 100% CPU limit cap - users can now set CPU limits above 100% as intended for Minecraft servers |
+| 🐛 **Status Polling Race Condition** | Fixed race condition where `refreshStats()` would interfere with power action status updates, causing incorrect status displays |
+| 🐛 **New Server Status** | Changed initial server status from "UNKNOWN" to "INSTALLING" for better clarity and user understanding |
+
+**Improvements:**
+
+- 🎯 **Better UX** - Clear status transitions help users understand what's happening with their servers
+- 🔒 **Prevented Double Actions** - Buttons disabled during transitions prevent accidental multiple power actions
+- ⚡ **Faster Updates** - Reduced status polling interval from 30 seconds to 5 seconds for more responsive updates
+- 🔄 **Consistent Behavior** - Both "Manage Servers" and "Live Status" pages now behave identically
+- 📱 **Visual Feedback** - New status colors and indicators make server states more obvious
+- 🛡️ **State Management** - Improved power action state tracking prevents intermediate status confusion
+
+**Technical Changes:**
+
+- Added `powerActionInProgress` and `powerActionTargetStatus` tracking variables
+- Enhanced `sendPowerAction()` function with intelligent status filtering
+- Updated `refreshStats()` to respect power action transitions
+- Modified status polling logic to filter intermediate states
+- Updated status badge rendering for "Installing", "Starting", "Stopping", and "Checking" states
+- Removed CPU limit validation from both frontend and backend
+
+**How to Update:**
+
+```bash
+# GitHub method (recommended)
+cd AETHER_DASHBOARD
+git pull origin main
+npm install
+pm2 restart aether-dashboard
+```
+
+Or via SFTP: Download latest version, replace files (keep database.db and .env), run `npm install`, restart dashboard.
+
+**⚠️ Important:** Always backup `database.db` and `.env` before updating!
+
+---
+
+### Version 1.3.4 🎉
 
 **Release Date:** March 2026
 
@@ -604,7 +666,7 @@ Or via SFTP: Download latest version, replace files (keep database.db and .env),
    ```bash
    pwd
    ```
-   Should show: `/root/AETHER_PANEL` or similar
+   Should show: `/root/AETHER_DASHBOARD` or similar
 
 2. **If using GitHub, check your connection:**
    ```bash
@@ -679,7 +741,7 @@ If you encounter issues during updates:
 
 ---
 
-**Last Updated:** Version 1.3.4
+**Last Updated:** Version 1.3.5
 
 **Made with ❤️ for free hosting providers**
 

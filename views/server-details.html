@@ -254,7 +254,7 @@
                                     <h2 id="serverName">Server Name</h2>
                                     <span id="statusBadge" class="live-indicator">
                                         <span class="dot"></span>
-                                        <span id="statusText">Online</span>
+                                        <span id="statusText">Checking...</span>
                                     </span>
                                 </div>
                                 <p class="server-address" id="serverAddress">Loading address...</p>
@@ -483,6 +483,10 @@
             ram: [],
             labels: []
         };
+        
+        // Track power action transitions to prevent intermediate status updates
+        let powerActionInProgress = false;
+        let powerActionTargetStatus = null;
         const MAX_HISTORY = 30; // Keep last 30 data points
         let refreshInterval = null;
         let previousNetworkRx = 0;
@@ -561,6 +565,9 @@
                 ? `🌐 ${serverData.public_address}` 
                 : 'Address not available';
             
+            // Set initial status to "Checking..." before first status check
+            updateStatusBadge('checking');
+            
             // Set limits
             document.getElementById('maxRam').textContent = `${Math.round(serverData.ram / 1024)}GB`;
             document.getElementById('maxCpu').textContent = `${serverData.cpu}%`;
@@ -577,6 +584,23 @@
         async function refreshStats() {
             if (!serverData || !serverData.pterodactyl_identifier) {
                 updateStatusBadge('unknown');
+                return;
+            }
+            
+            // Don't update status if we're in the middle of a power action transition
+            // This prevents showing intermediate states like "Online" when stopping
+            if (powerActionInProgress) {
+                // Still update stats/resources, but skip status badge update
+                try {
+                    const response = await fetch(`/servers/api/status/${serverId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.resources) {
+                        updateStats(data.resources);
+                    }
+                } catch (error) {
+                    console.error('Error refreshing stats:', error);
+                }
                 return;
             }
             
@@ -610,7 +634,9 @@
                 'offline': { text: 'Offline', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.2)', border: 'rgba(107, 114, 128, 0.4)' },
                 'starting': { text: 'Starting', color: '#eab308', bg: 'rgba(234, 179, 8, 0.2)', border: 'rgba(234, 179, 8, 0.4)' },
                 'stopping': { text: 'Stopping', color: '#f97316', bg: 'rgba(249, 115, 22, 0.2)', border: 'rgba(249, 115, 22, 0.4)' },
-                'unknown': { text: 'Unknown', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)', border: 'rgba(107, 114, 128, 0.2)' }
+                'installing': { text: 'Installing', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)', border: 'rgba(59, 130, 246, 0.4)' },
+                'checking': { text: 'Checking...', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)', border: 'rgba(59, 130, 246, 0.4)' },
+                'unknown': { text: 'Installing', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)', border: 'rgba(59, 130, 246, 0.4)' } // Show "Installing" for unknown status
             };
             
             const info = statusMap[status] || statusMap['unknown'];
@@ -830,6 +856,23 @@
             
             console.log('[DEBUG] sendPowerAction called:', { serverId, action });
             
+            // Immediately update status to show action in progress
+            const actionStatusMap = {
+                'start': 'starting',
+                'stop': 'stopping',
+                'restart': 'starting',
+                'kill': 'stopping'
+            };
+            const expectedStatus = actionStatusMap[action];
+            updateStatusBadge(expectedStatus);
+            
+            // Track target status for re-enabling buttons
+            const targetStatus = action === 'start' || action === 'restart' ? 'running' : 'offline';
+            
+            // Set flag to prevent refreshStats from interfering
+            powerActionInProgress = true;
+            powerActionTargetStatus = targetStatus;
+            
             try {
                 const response = await fetch(`/servers/api/power/${serverId}`, {
                     method: 'POST',
@@ -844,11 +887,72 @@
                 
                 if (data.success) {
                     showNotification(data.message, 'success');
-                    // Refresh status after a delay
-                    setTimeout(refreshStats, 2000);
-                    setTimeout(refreshStats, 5000);
+                    
+                    // Poll for status until target state is reached
+                    let pollCount = 0;
+                    const maxPolls = 30; // Maximum 30 polls (60 seconds)
+                    const pollInterval = setInterval(async () => {
+                        pollCount++;
+                        try {
+                            const statusResponse = await fetch(`/servers/api/status/${serverId}`);
+                            const statusData = await statusResponse.json();
+                            
+                            if (statusData.success) {
+                                const currentStatus = statusData.status;
+                                
+                                // Only update status if we're transitioning to target, or already at target
+                                // Don't show intermediate states like "running" when we're stopping
+                                if (powerActionInProgress) {
+                                    // If we're stopping and status is still running/online, keep showing "stopping"
+                                    if (targetStatus === 'offline' && (currentStatus === 'running' || currentStatus === 'online')) {
+                                        // Keep showing "stopping" status - don't update badge yet
+                                        return; // Skip this update
+                                    }
+                                    // If we're starting and status is still offline, keep showing "starting"
+                                    if (targetStatus === 'running' && (currentStatus === 'offline' || currentStatus === 'stopped')) {
+                                        // Keep showing "starting" status - don't update badge yet
+                                        return; // Skip this update
+                                    }
+                                }
+                                
+                                updateStatusBadge(currentStatus);
+                                
+                                // Check if we've reached the target state
+                                if (currentStatus === targetStatus || 
+                                    (targetStatus === 'running' && (currentStatus === 'running' || currentStatus === 'online')) ||
+                                    (targetStatus === 'offline' && (currentStatus === 'offline' || currentStatus === 'stopped'))) {
+                                    clearInterval(pollInterval);
+                                    // Clear the flag
+                                    powerActionInProgress = false;
+                                    powerActionTargetStatus = null;
+                                    // Re-enable buttons
+                                    buttons.forEach(btn => btn.disabled = false);
+                                } else if (pollCount >= maxPolls) {
+                                    // Timeout - re-enable buttons anyway
+                                    clearInterval(pollInterval);
+                                    powerActionInProgress = false;
+                                    powerActionTargetStatus = null;
+                                    buttons.forEach(btn => btn.disabled = false);
+                                    showNotification('Status check timeout. Buttons re-enabled.', 'info');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error polling status:', error);
+                            if (pollCount >= maxPolls) {
+                                clearInterval(pollInterval);
+                                powerActionInProgress = false;
+                                powerActionTargetStatus = null;
+                                buttons.forEach(btn => btn.disabled = false);
+                            }
+                        }
+                    }, 2000); // Poll every 2 seconds
+                    
+                    // Don't call refreshStats here - let the polling handle status updates
+                    // This prevents showing intermediate states like "Online" when stopping
                 } else {
                     console.error('[DEBUG] Power action failed:', data);
+                    powerActionInProgress = false;
+                    powerActionTargetStatus = null;
                     // Handle transient errors (like 409 - server still installing) with info/warning
                     if (data.isTransient || response.status === 409) {
                         showNotification(data.message || 'Server is not ready yet. Please wait a moment and try again.', 'info');
@@ -857,12 +961,16 @@
                     } else {
                         showNotification(data.message || 'Failed to send power action', 'error');
                     }
+                    // Re-enable buttons on error
+                    buttons.forEach(btn => btn.disabled = false);
                 }
             } catch (error) {
                 console.error('[DEBUG] Error sending power action:', error);
                 console.error('[DEBUG] Error details:', { message: error.message, stack: error.stack });
                 showNotification('Error sending power action: ' + error.message, 'error');
-            } finally {
+                powerActionInProgress = false;
+                powerActionTargetStatus = null;
+                // Re-enable buttons on error
                 buttons.forEach(btn => btn.disabled = false);
             }
         }

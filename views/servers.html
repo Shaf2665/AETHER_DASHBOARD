@@ -124,6 +124,15 @@
             background: #f97316;
             animation: pulse 0.5s infinite;
         }
+        .status-installing {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+        }
+        .status-installing .status-dot {
+            background: #3b82f6;
+            animation: pulse 1s infinite;
+        }
         .status-unknown {
             background: rgba(107, 114, 128, 0.1);
             color: #6b7280;
@@ -266,8 +275,8 @@
                             </div>
                             <div class="form-group">
                                 <label for="serverCpu">CPU Limit (%)</label>
-                                <input type="number" id="serverCpu" min="100" max="100" value="100" required>
-                                <small style="color: #cbd5e1;">Fixed at 100%</small>
+                                <input type="number" id="serverCpu" min="100" value="100" required>
+                                <small style="color: #cbd5e1;">Minimum: 100% (can exceed 100% for better performance)</small>
                             </div>
                             <div class="form-group">
                                 <label for="serverStorage">Storage (GB)</label>
@@ -640,9 +649,9 @@
                                 -->
                                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                     <h3 style="margin: 0; color: #f8fafc; font-weight: 600;">${escapeHtml(server.name)}</h3>
-                                    <span id="status-badge-${server.id}" class="status-badge status-unknown" title="Checking status...">
+                                    <span id="status-badge-${server.id}" class="status-badge status-installing" title="Checking status...">
                                         <span class="status-dot"></span>
-                                        <span class="status-text">Loading...</span>
+                                        <span class="status-text">Checking...</span>
                                     </span>
                                 </div>
                                 ${server.public_address ? 
@@ -802,6 +811,18 @@
                     showNotification('Server created successfully!', 'success');
                     showServerList();
                     await loadServers();
+                    
+                    // Set newly created server status to installing
+                    if (data.server && data.server.id) {
+                        // Wait a bit for the DOM to update
+                        setTimeout(() => {
+                            const newServerCard = document.querySelector(`.server-card[data-server-id="${data.server.id}"]`);
+                            if (newServerCard) {
+                                updateStatusBadge(data.server.id, 'installing');
+                            }
+                        }, 100);
+                    }
+                    
                     await loadServerSlotInfo(); // Refresh slot count
                     await loadResourceDisplay(); // Refresh resource display
                 } else {
@@ -975,7 +996,7 @@
             if (!badge) return;
             
             // Remove all status classes
-            badge.classList.remove('status-running', 'status-offline', 'status-starting', 'status-stopping', 'status-unknown');
+            badge.classList.remove('status-running', 'status-offline', 'status-starting', 'status-stopping', 'status-installing', 'status-unknown');
             
             // Map status to display text and class
             const statusMap = {
@@ -984,7 +1005,8 @@
                 'offline': { text: 'Offline', class: 'status-offline' },
                 'starting': { text: 'Starting', class: 'status-starting' },
                 'stopping': { text: 'Stopping', class: 'status-stopping' },
-                'unknown': { text: 'Unknown', class: 'status-unknown' }
+                'installing': { text: 'Installing', class: 'status-installing' },
+                'unknown': { text: 'Installing', class: 'status-installing' } // Show "Installing" for unknown status
             };
             
             const statusInfo = statusMap[status] || statusMap['unknown'];
@@ -1009,7 +1031,11 @@
                 'restart': 'starting',
                 'kill': 'stopping'
             };
-            updateStatusBadge(serverId, actionStatusMap[action]);
+            const expectedStatus = actionStatusMap[action];
+            updateStatusBadge(serverId, expectedStatus);
+            
+            // Track target status for re-enabling buttons
+            const targetStatus = action === 'start' || action === 'restart' ? 'running' : 'offline';
             
             try {
                 const response = await fetch(`/servers/api/power/${serverId}`, {
@@ -1023,10 +1049,45 @@
                 if (data.success) {
                     showNotification(data.message, 'success');
                     
-                    // Poll for status update after a delay
+                    // Poll for status until target state is reached
+                    let pollCount = 0;
+                    const maxPolls = 30; // Maximum 30 polls (60 seconds)
+                    const pollInterval = setInterval(async () => {
+                        pollCount++;
+                        try {
+                            const statusResponse = await fetch(`/servers/api/status/${serverId}`);
+                            const statusData = await statusResponse.json();
+                            
+                            if (statusData.success) {
+                                const currentStatus = statusData.status;
+                                updateStatusBadge(serverId, currentStatus);
+                                
+                                // Check if we've reached the target state
+                                if (currentStatus === targetStatus || 
+                                    (targetStatus === 'running' && (currentStatus === 'running' || currentStatus === 'online')) ||
+                                    (targetStatus === 'offline' && (currentStatus === 'offline' || currentStatus === 'stopped'))) {
+                                    clearInterval(pollInterval);
+                                    // Re-enable buttons
+                                    buttons.forEach(btn => btn.disabled = false);
+                                } else if (pollCount >= maxPolls) {
+                                    // Timeout - re-enable buttons anyway
+                                    clearInterval(pollInterval);
+                                    buttons.forEach(btn => btn.disabled = false);
+                                    showNotification('Status check timeout. Buttons re-enabled.', 'info');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error polling status:', error);
+                            if (pollCount >= maxPolls) {
+                                clearInterval(pollInterval);
+                                buttons.forEach(btn => btn.disabled = false);
+                            }
+                        }
+                    }, 2000); // Poll every 2 seconds
+                    
+                    // Also check immediately after delays
                     setTimeout(() => loadServerStatus(serverId), 2000);
                     setTimeout(() => loadServerStatus(serverId), 5000);
-                    setTimeout(() => loadServerStatus(serverId), 10000);
                 } else {
                     // Handle transient errors (like 409 - server still installing) with info/warning
                     if (data.isTransient || response.status === 409) {
@@ -1038,18 +1099,19 @@
                     }
                     // Reload actual status
                     loadServerStatus(serverId);
+                    // Re-enable buttons on error
+                    buttons.forEach(btn => btn.disabled = false);
                 }
             } catch (error) {
                 console.error('Error sending power action:', error);
                 showNotification(`Failed to ${action} server`, 'error');
                 loadServerStatus(serverId);
-            } finally {
-                // Re-enable buttons
+                // Re-enable buttons on error
                 buttons.forEach(btn => btn.disabled = false);
             }
         }
         
-        // Refresh all server statuses periodically (every 30 seconds)
+        // Refresh all server statuses periodically (every 5 seconds to match live status page)
         setInterval(() => {
             document.querySelectorAll('.server-card').forEach(card => {
                 const serverId = card.dataset.serverId;
@@ -1057,7 +1119,7 @@
                     loadServerStatus(serverId);
                 }
             });
-        }, 30000);
+        }, 5000);
     </script>
 </body>
 </html>

@@ -285,8 +285,8 @@
                                             </div>
                                             <div class="form-group">
                                                 <label for="cpuPercent">CPU %</label>
-                                                <input type="number" id="cpuPercent" min="1" max="100" required>
-                                                <small style="color: #cbd5e1;">Percentage of CPU</small>
+                                                <input type="number" id="cpuPercent" min="1" required>
+                                                <small style="color: #cbd5e1;">Percentage of CPU (can exceed 100%)</small>
                                             </div>
                                         </div>
                                         <div style="margin-top: 12px; padding: 12px; background: rgba(124, 58, 237, 0.1); border-radius: 8px;">
@@ -1174,10 +1174,7 @@
                 return;
             }
             
-            if (prices.cpu_percent_per_set > 100) {
-                showNotification('CPU percentage cannot exceed 100%', 'error');
-                return;
-            }
+            // CPU percentage can exceed 100% for better server performance
             
             try {
                 const response = await fetch('/admin/api/store/prices', {
