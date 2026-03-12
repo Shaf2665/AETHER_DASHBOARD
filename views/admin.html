@@ -127,13 +127,13 @@
                 <div class="card">
                     <div class="tabs-scroll-container">
                         <div class="tabs-nav">
-                            <button class="tab-btn active" onclick="showTab('users')">Users</button>
-                            <button class="tab-btn" onclick="showTab('servers')">Servers</button>
-                            <button class="tab-btn" onclick="showTab('coins')">Coin Management</button>
-                            <button class="tab-btn" onclick="showTab('linkvertise')">Linkvertise</button>
-                            <button class="tab-btn" onclick="showTab('store')">Store Management</button>
-                            <button class="tab-btn" onclick="showTab('templates')">Server Templates</button>
-                            <button class="tab-btn" onclick="showTab('panel')">Panel</button>
+                            <button class="tab-btn active" onclick="showTab('users', this)">Users</button>
+                            <button class="tab-btn" onclick="showTab('servers', this)">Servers</button>
+                            <button class="tab-btn" onclick="showTab('coins', this)">Coin Management</button>
+                            <button class="tab-btn" onclick="showTab('linkvertise', this)">Linkvertise</button>
+                            <button class="tab-btn" onclick="showTab('store', this)">Store Management</button>
+                            <button class="tab-btn" onclick="showTab('templates', this)">Server Templates</button>
+                            <button class="tab-btn" onclick="showTab('panel', this)">Panel</button>
                         </div>
                     </div>
                     
@@ -623,7 +623,7 @@
                 }
                 
                 try {
-                    const response = await fetch(`/admin/api/users/${userId}`, {
+                    const response = await apiFetch(`/admin/api/users/${userId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ username, email, is_admin: isAdmin })
@@ -673,7 +673,7 @@
                     }
                     
                     try {
-                        const response = await fetch('/admin/api/coins', {
+                        const response = await apiFetch('/admin/api/coins', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ username: username, amount: amount })
@@ -709,7 +709,7 @@
             }
         });
         
-        function showTab(tabName) {
+        function showTab(tabName, buttonElement) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.style.display = 'none';
@@ -719,8 +719,22 @@
             });
             
             // Show selected tab
-            document.getElementById(tabName + 'Tab').style.display = 'block';
-            event.target.classList.add('active');
+            const tabContent = document.getElementById(tabName + 'Tab');
+            if (tabContent) {
+                tabContent.style.display = 'block';
+            }
+            
+            // Activate the clicked button
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+            } else {
+                // Fallback: find button by text content matching tab name
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    if (btn.textContent.trim().toLowerCase().includes(tabName.toLowerCase())) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // Load data for tab
             if (tabName === 'users') {
@@ -743,7 +757,7 @@
         
         async function loadSystemStats() {
             try {
-                const response = await fetch('/admin/api/stats');
+                const response = await apiFetch('/admin/api/stats');
                 if (response.ok) {
                     const data = await response.json();
                     document.getElementById('totalUsers').textContent = data.stats.total_users || 0;
@@ -757,7 +771,7 @@
         
         async function loadUsers() {
             try {
-                const response = await fetch('/admin/api/users');
+                const response = await apiFetch('/admin/api/users');
                 if (response.ok) {
                     const data = await response.json();
                     displayUsers(data.users || []);
@@ -800,7 +814,7 @@
         
         async function loadAllServers() {
             try {
-                const response = await fetch('/admin/api/servers');
+                const response = await apiFetch('/admin/api/servers');
                 if (response.ok) {
                     const data = await response.json();
                     displayAllServers(data.servers || []);
@@ -855,7 +869,7 @@
             }
             
             try {
-                const response = await fetch(`/admin/api/users/${userId}`, {
+                const response = await apiFetch(`/admin/api/users/${userId}`, {
                     method: 'DELETE'
                 });
                 
@@ -878,7 +892,7 @@
             }
             
             try {
-                const response = await fetch(`/admin/api/servers/${serverId}`, {
+                const response = await apiFetch(`/admin/api/servers/${serverId}`, {
                     method: 'DELETE'
                 });
                 
@@ -899,7 +913,7 @@
         // Linkvertise Management Functions
         async function loadLinkvertiseConfig() {
             try {
-                const response = await fetch('/admin/api/linkvertise/config');
+                const response = await apiFetch('/admin/api/linkvertise/config');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.config) {
@@ -916,7 +930,7 @@
         
         async function loadLinkvertiseLinks() {
             try {
-                const response = await fetch('/admin/api/linkvertise/links');
+                const response = await apiFetch('/admin/api/linkvertise/links');
                 if (response.ok) {
                     const data = await response.json();
                     displayLinkvertiseLinks(data.links || []);
@@ -980,7 +994,7 @@
         
         async function editLink(linkId) {
             try {
-                const response = await fetch(`/admin/api/linkvertise/links/${linkId}`);
+                const response = await apiFetch(`/admin/api/linkvertise/links/${linkId}`);
                 const data = await response.json();
                 if (data.success && data.link) {
                     const link = data.link;
@@ -1004,7 +1018,7 @@
             }
             
             try {
-                const response = await fetch(`/admin/api/linkvertise/links/${linkId}`, {
+                const response = await apiFetch(`/admin/api/linkvertise/links/${linkId}`, {
                     method: 'DELETE'
                 });
                 
@@ -1032,7 +1046,7 @@
             };
             
             try {
-                const response = await fetch('/admin/api/linkvertise/config', {
+                const response = await apiFetch('/admin/api/linkvertise/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
@@ -1065,7 +1079,7 @@
             const method = linkId ? 'PUT' : 'POST';
             
             try {
-                const response = await fetch(url, {
+                const response = await apiFetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(linkData)
@@ -1087,7 +1101,7 @@
         // Store Management Functions
         async function loadStorePrices() {
             try {
-                const response = await fetch('/admin/api/store/prices');
+                const response = await apiFetch('/admin/api/store/prices');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.prices) {
@@ -1177,7 +1191,7 @@
             // CPU percentage can exceed 100% for better server performance
             
             try {
-                const response = await fetch('/admin/api/store/prices', {
+                const response = await apiFetch('/admin/api/store/prices', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(prices)
@@ -1198,7 +1212,7 @@
         // Panel Configuration Functions
         async function loadPanelConfig() {
             try {
-                const response = await fetch('/admin/api/panel/config');
+                const response = await apiFetch('/admin/api/panel/config');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.config) {
@@ -1315,7 +1329,7 @@
             testBtn.textContent = 'Testing...';
             
             try {
-                const response = await fetch('/admin/api/panel/test', {
+                const response = await apiFetch('/admin/api/panel/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey, client_api_key: clientApiKey })
@@ -1423,7 +1437,7 @@
                     try {
                         showNotification('Disconnecting panel and removing all data...', 'info');
                         
-                        const response = await fetch('/admin/api/panel/disconnect', {
+                        const response = await apiFetch('/admin/api/panel/disconnect', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ removeAdmins: removeAdmins })
@@ -1481,7 +1495,7 @@
         async function fetchEggs() {
             try {
                 showNotification('Fetching eggs from Pterodactyl...', 'info');
-                const response = await fetch('/admin/api/panel/eggs');
+                const response = await apiFetch('/admin/api/panel/eggs');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1498,7 +1512,7 @@
         
         async function loadCachedEggs() {
             try {
-                const response = await fetch('/admin/api/panel/eggs/cached');
+                const response = await apiFetch('/admin/api/panel/eggs/cached');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1606,7 +1620,7 @@
             
             try {
                 showNotification(`Syncing ${selectedEggIds.length} selected egg(s) to database...`, 'info');
-                const response = await fetch('/admin/api/panel/eggs/sync', {
+                const response = await apiFetch('/admin/api/panel/eggs/sync', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ egg_ids: selectedEggIds, eggs: selectedEggs })
@@ -1632,7 +1646,7 @@
         async function fetchAllocations() {
             try {
                 showNotification('Fetching allocations from Pterodactyl...', 'info');
-                const response = await fetch('/admin/api/panel/allocations');
+                const response = await apiFetch('/admin/api/panel/allocations');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1655,7 +1669,7 @@
         
         async function loadCachedAllocations() {
             try {
-                const response = await fetch('/admin/api/panel/allocations/cached');
+                const response = await apiFetch('/admin/api/panel/allocations/cached');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1713,7 +1727,7 @@
             // Allow sync even without fetching first (will fetch fresh from Pterodactyl)
             try {
                 showNotification('Syncing allocations to database...', 'info');
-                const response = await fetch('/admin/api/panel/allocations/sync', { method: 'POST' });
+                const response = await apiFetch('/admin/api/panel/allocations/sync', { method: 'POST' });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1733,7 +1747,7 @@
         // Panel Settings Functions
         async function loadPanelSettings() {
             try {
-                const response = await fetch('/admin/api/panel/settings');
+                const response = await apiFetch('/admin/api/panel/settings');
                 const data = await response.json();
                 
                 if (data.success && data.settings) {
@@ -1762,7 +1776,7 @@
             resultsContent.innerHTML = '<p style="color: #cbd5e1;">Syncing users, please wait...</p>';
             
             try {
-                const response = await fetch('/admin/api/panel/sync-users', {
+                const response = await apiFetch('/admin/api/panel/sync-users', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -2021,7 +2035,7 @@
             connectBtn.textContent = 'Connecting...';
             
             try {
-                const response = await fetch('/admin/api/panel/connect', {
+                const response = await apiFetch('/admin/api/panel/connect', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ panel_url: panelUrl, api_key: apiKey, client_api_key: clientApiKey })
@@ -2056,7 +2070,7 @@
             submitBtn.textContent = 'Saving...';
             
             try {
-                const response = await fetch('/admin/api/panel/settings', {
+                const response = await apiFetch('/admin/api/panel/settings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2087,7 +2101,7 @@
         // Load eggs for template dropdown
         async function loadEggsForTemplates() {
             try {
-                const response = await fetch('/servers/api/eggs');
+                const response = await apiFetch('/servers/api/eggs');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2109,7 +2123,7 @@
         // Load all templates
         async function loadTemplates() {
             try {
-                const response = await fetch('/admin/api/templates');
+                const response = await apiFetch('/admin/api/templates');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -2197,7 +2211,7 @@
             }
             
             try {
-                const response = await fetch('/admin/api/templates', {
+                const response = await apiFetch('/admin/api/templates', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(formData)
@@ -2222,7 +2236,7 @@
         // Toggle template active status
         async function toggleTemplate(templateId) {
             try {
-                const response = await fetch(`/admin/api/templates/${templateId}/toggle`, {
+                const response = await apiFetch(`/admin/api/templates/${templateId}/toggle`, {
                     method: 'POST'
                 });
                 
@@ -2247,7 +2261,7 @@
             }
             
             try {
-                const response = await fetch(`/admin/api/templates/${templateId}`, {
+                const response = await apiFetch(`/admin/api/templates/${templateId}`, {
                     method: 'DELETE'
                 });
                 

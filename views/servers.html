@@ -310,6 +310,7 @@
         </main>
     </div>
     
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/theme.js"></script>
@@ -324,6 +325,9 @@
             showCreateServer();
         }
         
+        // Phase 2: WebSocket socket instance (accessible globally in this script)
+        let socket = null;
+        
         // Load servers and user data
         document.addEventListener('DOMContentLoaded', async () => {
             await loadUserData();
@@ -331,7 +335,53 @@
             await loadServerSlotInfo();
             checkAdminAccess();
             loadBrandingSettings();
+            
+            // Phase 1 + Phase 2: WebSocket connection with subscription support
+            socket = io({
+                transports: ['websocket']
+            });
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] Connected');
+                
+                // Phase 2: Subscribe to servers after connection is established
+                subscribeToAllServers();
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('[WebSocket] Disconnected');
+            });
+            
+            // Phase 2: Subscription confirmation listener
+            socket.on('subscribed', (data) => {
+                console.log('[WebSocket] Subscribed to server:', data.serverId);
+            });
+            
+            // Phase 3: Real-time server status updates
+            socket.on('server_status', (data) => {
+                console.log('[WebSocket] Server status update:', data);
+                
+                if (!data || !data.serverId) return;
+                
+                updateStatusBadge(data.serverId, data.status);
+            });
         });
+        
+        // Phase 2: Subscribe to all visible servers
+        function subscribeToAllServers() {
+            if (!socket || !socket.connected) {
+                console.log('[WebSocket] Socket not connected, skipping subscription');
+                return;
+            }
+            
+            document.querySelectorAll('.server-card').forEach(card => {
+                const serverId = card.dataset.serverId;
+                if (serverId) {
+                    socket.emit('subscribe_server', { serverId: serverId });
+                    console.log('[WebSocket] Emitting subscription for server:', serverId);
+                }
+            });
+        }
         
         async function loadServerSlotInfo() {
             try {
@@ -708,12 +758,38 @@
             html += '</div>';
             container.innerHTML = html;
             
-            // Load status for all servers
+            // Load initial status for all servers (immediate HTTP fetch)
+            // This ensures status is displayed immediately while WebSocket updates handle real-time changes
             servers.forEach(server => {
                 if (server.pterodactyl_identifier) {
-                    loadServerStatus(server.id);
+                    // Fetch initial status immediately via HTTP (with credentials)
+                    fetch(`/servers/api/status/${server.id}`, {
+                        credentials: 'same-origin'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                updateStatusBadge(server.id, data.status);
+                                console.log(`[Status] Initial status loaded for server ${server.id}: ${data.status}`);
+                            } else {
+                                console.warn(`[Status] Failed to load initial status for server ${server.id}:`, data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error(`Error loading initial status for server ${server.id}:`, error);
+                        });
                 }
             });
+            
+            // Phase 2: Subscribe to all displayed servers via WebSocket
+            if (socket && socket.connected) {
+                servers.forEach(server => {
+                    socket.emit('subscribe_server', { serverId: server.id });
+                    console.log('[WebSocket] Emitting subscription for server:', server.id);
+                });
+            } else {
+                console.log('[WebSocket] Socket not connected yet, subscriptions will be sent after connection');
+            }
         }
         
         // Create server form handler
@@ -970,26 +1046,6 @@
         // FEATURE 1: Quick Action Buttons - Power Control
         // ============================================
         
-        // Load server status and update badge
-        async function loadServerStatus(serverId) {
-            const badge = document.getElementById(`status-badge-${serverId}`);
-            if (!badge) return;
-            
-            try {
-                const response = await fetch(`/servers/api/status/${serverId}`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    updateStatusBadge(serverId, data.status);
-                } else {
-                    updateStatusBadge(serverId, 'unknown');
-                }
-            } catch (error) {
-                console.error('Error loading server status:', error);
-                updateStatusBadge(serverId, 'unknown');
-            }
-        }
-        
         // Update the status badge UI
         function updateStatusBadge(serverId, status) {
             const badge = document.getElementById(`status-badge-${serverId}`);
@@ -1049,77 +1105,64 @@
                 if (data.success) {
                     showNotification(data.message, 'success');
                     
-                    // Poll for status until target state is reached
-                    let pollCount = 0;
-                    const maxPolls = 30; // Maximum 30 polls (60 seconds)
-                    const pollInterval = setInterval(async () => {
-                        pollCount++;
-                        try {
-                            const statusResponse = await fetch(`/servers/api/status/${serverId}`);
-                            const statusData = await statusResponse.json();
+                    // Phase 5: Rely on WebSocket for status updates instead of polling
+                    // Set up a timeout to re-enable buttons if WebSocket doesn't update within reasonable time
+                    const timeoutId = setTimeout(() => {
+                        buttons.forEach(btn => btn.disabled = false);
+                        showNotification('Status check timeout. Buttons re-enabled.', 'info');
+                    }, 60000); // 60 second timeout
+                    
+                    // Store timeout ID on the card for cleanup when status updates arrive
+                    const card = document.querySelector(`.server-card[data-server-id="${serverId}"]`);
+                    if (card) {
+                        card.dataset.powerActionTimeout = timeoutId;
+                        card.dataset.powerActionTargetStatus = targetStatus;
+                    }
+                    
+                    // Listen for WebSocket status update to re-enable buttons
+                    const statusUpdateHandler = (updateData) => {
+                        if (updateData.serverId === serverId) {
+                            const currentStatus = updateData.status;
                             
-                            if (statusData.success) {
-                                const currentStatus = statusData.status;
-                                updateStatusBadge(serverId, currentStatus);
-                                
-                                // Check if we've reached the target state
-                                if (currentStatus === targetStatus || 
-                                    (targetStatus === 'running' && (currentStatus === 'running' || currentStatus === 'online')) ||
-                                    (targetStatus === 'offline' && (currentStatus === 'offline' || currentStatus === 'stopped'))) {
-                                    clearInterval(pollInterval);
-                                    // Re-enable buttons
-                                    buttons.forEach(btn => btn.disabled = false);
-                                } else if (pollCount >= maxPolls) {
-                                    // Timeout - re-enable buttons anyway
-                                    clearInterval(pollInterval);
-                                    buttons.forEach(btn => btn.disabled = false);
-                                    showNotification('Status check timeout. Buttons re-enabled.', 'info');
+                            // Check if we've reached the target state
+                            if (currentStatus === targetStatus || 
+                                (targetStatus === 'running' && (currentStatus === 'running' || currentStatus === 'online')) ||
+                                (targetStatus === 'offline' && (currentStatus === 'offline' || currentStatus === 'stopped'))) {
+                                // Clear timeout and re-enable buttons
+                                if (card && card.dataset.powerActionTimeout) {
+                                    clearTimeout(parseInt(card.dataset.powerActionTimeout));
+                                    delete card.dataset.powerActionTimeout;
+                                    delete card.dataset.powerActionTargetStatus;
                                 }
-                            }
-                        } catch (error) {
-                            console.error('Error polling status:', error);
-                            if (pollCount >= maxPolls) {
-                                clearInterval(pollInterval);
                                 buttons.forEach(btn => btn.disabled = false);
+                                
+                                // Remove this one-time listener
+                                socket.off('server_status', statusUpdateHandler);
                             }
                         }
-                    }, 2000); // Poll every 2 seconds
+                    };
                     
-                    // Also check immediately after delays
-                    setTimeout(() => loadServerStatus(serverId), 2000);
-                    setTimeout(() => loadServerStatus(serverId), 5000);
+                    // Add one-time listener for this specific server's status update
+                    socket.on('server_status', statusUpdateHandler);
                 } else {
                     // Handle transient errors (like 409 - server still installing) with info/warning
                     if (data.isTransient || response.status === 409) {
                         showNotification(data.message || `Server is not ready yet. Please wait a moment and try again.`, 'info');
-                        // Auto-retry after a delay for transient errors
-                        setTimeout(() => loadServerStatus(serverId), 5000);
                     } else {
                         showNotification(data.message || `Failed to ${action} server`, 'error');
                     }
-                    // Reload actual status
-                    loadServerStatus(serverId);
                     // Re-enable buttons on error
                     buttons.forEach(btn => btn.disabled = false);
                 }
             } catch (error) {
                 console.error('Error sending power action:', error);
                 showNotification(`Failed to ${action} server`, 'error');
-                loadServerStatus(serverId);
                 // Re-enable buttons on error
                 buttons.forEach(btn => btn.disabled = false);
             }
         }
         
-        // Refresh all server statuses periodically (every 5 seconds to match live status page)
-        setInterval(() => {
-            document.querySelectorAll('.server-card').forEach(card => {
-                const serverId = card.dataset.serverId;
-                if (serverId) {
-                    loadServerStatus(serverId);
-                }
-            });
-        }, 5000);
+        // Phase 5: All status updates are now handled via WebSocket only
     </script>
 </body>
 </html>

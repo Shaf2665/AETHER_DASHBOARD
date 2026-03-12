@@ -26,3 +26,5 @@ Thumbs.db
 dist/
 build/
 
+# Documentation
+PROJECT_STRUCTURE.md

@@ -137,6 +137,7 @@
         </main>
     </div>
     
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/main.js"></script>
     <script src="/js/dashboard.js"></script>
     <script src="/js/theme.js"></script>
@@ -148,6 +149,19 @@
             await loadDashboardStats();
             checkAdminAccess();
             loadBrandingSettings();
+            
+            // Phase 1: Minimal WebSocket connection (no authentication or business logic)
+            const socket = io({
+                transports: ['websocket']
+            });
+            
+            socket.on('connect', () => {
+                console.log('[WebSocket] Connected');
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('[WebSocket] Disconnected');
+            });
         });
     </script>
 </body>

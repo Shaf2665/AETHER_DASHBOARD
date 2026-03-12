@@ -19,11 +19,13 @@ process.on('uncaughtException', (error) => {
 
 // Import required modules
 const express = require('express');
+const http = require('http');
 const path = require('path');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const passport = require('passport');
 const DiscordStrategy = require('passport-discord').Strategy;
+const { Server } = require('socket.io');
 
 // Create Express app
 const app = express();
@@ -303,12 +305,83 @@ app.use((req, res) => {
     res.status(404).send('Page not found');
 });
 
+// Create HTTP server from Express app
+const server = http.createServer(app);
+
+// Initialize Socket.IO with CORS support
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        credentials: true
+    }
+});
+
+// Initialize status poller with Socket.IO instance (Phase 3)
+const statusPoller = require('./config/statusPoller');
+statusPoller.initialize(io);
+
+// Minimal WebSocket connection handler (Phase 1 + Phase 2 + Phase 3)
+io.on('connection', (socket) => {
+    console.log('[WebSocket] Client connected:', socket.id);
+
+    // Phase 2: Server subscription events
+    socket.on('subscribe_server', async (data) => {
+        console.log('[WebSocket] Subscription request:', data);
+
+        if (!data || !data.serverId) {
+            console.log('[WebSocket] Invalid subscription request');
+            return;
+        }
+
+        const room = `server:${data.serverId}`;
+        socket.join(room);
+
+        console.log(`[WebSocket] Socket ${socket.id} joined room ${room}`);
+        
+        // Phase 3: Subscribe to status poller
+        // Get userId from session (socket.request.session is available via session middleware)
+        // We'll get it from the database by looking up the server owner
+        try {
+            const { get } = require('./config/database');
+            const server = await get('SELECT user_id FROM servers WHERE id = ?', [data.serverId]);
+            if (server && server.user_id) {
+                await statusPoller.subscribeSocketToServer(socket.id, data.serverId, server.user_id);
+            }
+        } catch (error) {
+            console.error('[WebSocket] Error subscribing to status poller:', error);
+        }
+        
+        // Send confirmation back to client
+        socket.emit('subscribed', { serverId: data.serverId });
+    });
+
+    socket.on('unsubscribe_server', (data) => {
+        if (!data || !data.serverId) return;
+
+        const room = `server:${data.serverId}`;
+        socket.leave(room);
+
+        // Phase 3: Unsubscribe from status poller
+        statusPoller.unsubscribeSocketFromServer(socket.id, data.serverId);
+
+        console.log(`[WebSocket] Socket ${socket.id} left room ${room}`);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('[WebSocket] Client disconnected:', socket.id);
+        
+        // Phase 3: Unsubscribe from all servers on disconnect
+        statusPoller.unsubscribeSocketFromAll(socket.id);
+    });
+});
+
 // Start the server
 // Bind to 0.0.0.0 to allow connections from all network interfaces
 // This works for both development (localhost) and production (external IP)
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Aether Dashboard is running on http://0.0.0.0:${PORT}`);
     console.log(`📝 Access locally: http://localhost:${PORT}`);
+    console.log(`📝 WebSocket support enabled on ws://localhost:${PORT}`);
     console.log(`📝 Make sure to set up your .env file with required configuration`);
 });
 

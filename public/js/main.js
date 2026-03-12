@@ -70,16 +70,38 @@ function formatDate(dateString) {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 }
 
-// Make API request
-async function apiRequest(url, options = {}) {
+// API fetch wrapper with credentials
+async function apiFetch(url, options = {}) {
     try {
         const response = await fetch(url, {
+            credentials: 'same-origin', // Always send cookies with requests
             ...options,
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             }
         });
+        
+        if (response.status === 401) {
+            console.warn('[apiFetch] Session expired. Redirecting to login.');
+            window.location.href = '/auth/login';
+            return null;
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('[apiFetch] Error:', error);
+        return null;
+    }
+}
+
+// Make API request
+async function apiRequest(url, options = {}) {
+    try {
+        const response = await apiFetch(url, options);
+        if (!response) {
+            throw new Error('Network or authentication error');
+        }
         
         const data = await response.json();
         
